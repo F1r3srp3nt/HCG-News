@@ -156,6 +156,8 @@ final class SectionsAndSearchTests: XCTestCase {
         await model.search("anything")
         guard case .failed(let error) = model.state else { return XCTFail() }
         XCTAssertEqual(error.kind, .notConfigured)
+        await model.search("")
+        guard case .failed = model.state else { return XCTFail("an empty query must not hide the not-connected state") }
     }
 }
 

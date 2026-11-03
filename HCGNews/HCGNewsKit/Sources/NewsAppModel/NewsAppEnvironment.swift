@@ -1,10 +1,12 @@
 import Foundation
+import Observation
 import NewsCore
 import HCGConnect
 import HCGTransport
 
 /// Composition root shared by the iPhone and iPad layouts.
 @MainActor
+@Observable
 public final class NewsAppEnvironment {
     public let contentConfiguration: NewsConfigurationState
     public let service: NewsService
@@ -17,7 +19,7 @@ public final class NewsAppEnvironment {
     /// True only for DEBUG UI-test runs with labelled fixture content.
     public let isUsingTestFixtures: Bool
 
-    private var sectionFeeds: [String: ArticleListModel] = [:]
+    @ObservationIgnored private var sectionFeeds: [String: ArticleListModel] = [:]
 
     public init(contentConfiguration: NewsConfigurationState,
                 service: NewsService,

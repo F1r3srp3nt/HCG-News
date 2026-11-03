@@ -265,6 +265,7 @@ public final class SearchModel {
 
     public func search(_ rawQuery: String) async {
         let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        if case .failed(let error) = state, error.kind == .notConfigured { return }
         guard query.count >= 2 else {
             state = .idle
             return
