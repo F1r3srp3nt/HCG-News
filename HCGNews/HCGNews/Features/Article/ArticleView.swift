@@ -56,7 +56,7 @@ struct ArticleView: View {
         .screenBackground()
         .safeLinkHandling()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { toolbar }
+        .toolbar { toolbarContent }
         .task {
             if case .idle = model.state { await model.load() }
         }
@@ -130,7 +130,7 @@ struct ArticleView: View {
     // MARK: Toolbar
 
     @ToolbarContentBuilder
-    private var toolbar: some ToolbarContent {
+    private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             Menu {
                 Picker("Text Size", selection: $readingStep) {

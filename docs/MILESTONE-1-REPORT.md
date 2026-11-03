@@ -46,6 +46,7 @@ A complete native reader exists as source: Home with explicit-flag breaking news
 | `swift test` of HCGNewsKit (Linux) | **90 tests, 0 failures.** NewsCore 50, HCGConnect 27, NewsAppModel 13. |
 | Two real defects found and fixed by those tests during development | Preformatted text lost its significant whitespace; an empty search query could hide the "not connected" state. |
 | `swiftc -parse` of every app and UI-test Swift file (Linux) | **Pass** (syntax only, no type checking) |
+| Independent code review of the SwiftUI layer against the package API (read-only; no compiler) | No definite compile errors found. Four hardening changes applied: resume-once guard in the sign-in browser adapter, explicit `import Accessibility`, simpler string expressions for the type checker, renamed the toolbar property. |
 | `project.pbxproj` parsed with an independent parser (`pbxproj` 4.2.1) | **Pass.** 35 objects, all references resolve, 2 targets. |
 | Asset catalog JSON | Valid |
 | **iOS app compile (xcodebuild)** | **Not run.** No Xcode or Apple SDK in this environment. |

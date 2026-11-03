@@ -31,7 +31,7 @@ struct ContentBlockView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(ordered ? "\(number(for: index, in: items))." : (item.level == 0 ? "•" : "◦"))
+                        Text(marker(ordered: ordered, index: index, items: items))
                             .font(Typography.body(for: readerStyle).monospacedDigit())
                             .foregroundStyle(palette.secondaryText)
                             .accessibilityHidden(true)
@@ -81,7 +81,7 @@ struct ContentBlockView: View {
                 Label("Embedded content not shown", systemImage: "rectangle.dashed")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
-                Text("This article includes embedded content\(host.map { " from \($0)" } ?? ""). For your security, the app doesn't load embedded third-party content.")
+                Text(embedMessage(host: host))
                     .font(.footnote)
                     .foregroundStyle(palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -94,6 +94,16 @@ struct ContentBlockView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(palette.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
+    }
+
+    private func marker(ordered: Bool, index: Int, items: [ListItem]) -> String {
+        if ordered { return String(number(for: index, in: items)) + "." }
+        return items[index].level == 0 ? "•" : "◦"
+    }
+
+    private func embedMessage(host: String?) -> String {
+        let source = host.map { " from " + $0 } ?? ""
+        return "This article includes embedded content" + source + ". For your security, the app doesn't load embedded third-party content."
     }
 
     /// Numbering restarts per nesting level.

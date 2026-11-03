@@ -1,4 +1,5 @@
 import SwiftUI
+import Accessibility
 import NewsCore
 import NewsAppModel
 
