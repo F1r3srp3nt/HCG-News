@@ -249,6 +249,26 @@ final class AppContainerTests: XCTestCase {
     }
 
     @MainActor
+    func testWithoutConfigurationNoNetworkRequestIsEverMade() async {
+        let transport = FakeTransport()
+        let platform = PlatformServices(transport: transport, browser: NeverBrowser(), sessionStore: MemorySessionStore(),
+                                        userAgent: "tests", redirectScheme: scheme, appVersion: "test")
+        let container = await AppContainer(platform: platform, stores: LocalStores.rooted(at: root, bundledConfiguration: nil, redirectScheme: scheme))
+        let env = container.environment
+        await env.home.reload()
+        await env.sections.reload()
+        await env.search.search("politics")
+        await env.account.restore()
+        await env.account.signIn()
+        await env.connection.checkAll()
+        await env.saved.downloadArticle(summary("x"))
+        await env.newsroom.loadCapabilities()
+        XCTAssertTrue(transport.requests.isEmpty)
+        XCTAssertFalse(env.saved.canDownload)
+        XCTAssertEqual(env.account.status?.authentication, .unavailable)
+    }
+
+    @MainActor
     func testUnconfiguredAndInvalidAreDistinctStates() async {
         let platform = PlatformServices(transport: FakeTransport(), browser: NeverBrowser(), sessionStore: MemorySessionStore(),
                                         userAgent: "tests", redirectScheme: scheme, appVersion: "test")

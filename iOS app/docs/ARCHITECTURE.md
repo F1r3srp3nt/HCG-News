@@ -1,92 +1,111 @@
 # HCG News for iPhone and iPad — architecture
 
-Milestone 1 (development build, **not released**).
+App version 0.2.0 (2). Development build, **not released**.
 
 ## 1. Layout
 
-Everything below is inside the repository's `iOS app/` folder (alongside `docs/`, `README.md` and `.gitignore`).
+Everything below is inside the repository's `iOS app/` folder.
 
 ```
 HCGNews/
-  HCGNews.xcodeproj           iOS app project: app target + UI-test target, shared scheme "HCGNews"
-  project.yml                 XcodeGen fallback that generates an equivalent project
-  HCGNews/                    SwiftUI app (file-system-synchronised group)
-    App/                      entry point, composition, adaptive root (tabs / sidebar), Router
-    Design/Theme.swift        Future and Classic styles, palette, typography, reading size
-    Components/               cards, breaking banner, image pipeline, state views, brand mark, inline text
-    Features/                 Home, Article, Sections, Search, Saved, Settings
-    Platform/                 ASWebAuthenticationSession adapter
-    Preview Content/          DEBUG-only fixtures for previews and UI tests (compiled out of Release)
-    Resources/Assets.xcassets supplied HCG logo, trimmed logo, app icon, accent colour
-    Configuration/            (absent) approved HCGNewsConfiguration.json goes here; git-ignored
-  HCGNewsUITests/             XCUITests (fixture mode + real unconfigured mode)
-  HCGNewsKit/                 Swift package, Foundation only, builds and tests on Linux too
-    Sources/HCGTransport      HTTP transport seam, JSON dates, secret guard, HCG host policy
-    Sources/NewsCore          models, HTML→native blocks, visibility, breaking rule, bookmarks, API client
-    Sources/HCGConnect        config validation, PKCE, callback validation, coordinator, Keychain store
-    Sources/NewsAppModel      @Observable @MainActor screen models + composition root
-    Tests/                    90 XCTest cases
+  HCGNews.xcodeproj              app + UI-test targets, shared scheme "HCGNews"
+  project.yml                    XcodeGen fallback
+  HCGNews/                       SwiftUI app (file-system-synchronised group)
+    App/                         entry point, AppContainer injection, adaptive root, Router, keyboard commands
+    Design/Theme.swift           palette (black/charcoal/silver/white + cyan for actions), typography, reader settings
+    Components/                  masthead/brand, cards, labels, images + photo viewer, audio + read-aloud, states
+    Features/Home|Sections|Search|Saved|Article     reader
+    Features/Settings            Settings, Advanced (configuration import, checks, diagnostics), About
+    Features/Account             HCG Connect account
+    Features/Newsroom            workspace, draft editor, administration
+    Platform/                    ASWebAuthenticationSession adapter
+    Preview Content/             DEBUG-only development fixtures (separate storage folder)
+    Resources/Assets.xcassets    HCGNewsMark (supplied HCG logo), AppIcon, HCGLogo/HCGLogoTrimmed (publisher)
+  HCGNewsUITests/                14 XCUITests (fixtures + real unconfigured app)
+  HCGNewsKit/                    Swift package, Foundation only; builds and tests on Linux
+    HCGTransport                 HTTP seam, JSON dates, secret guard, HCG host policy
+    NewsCore                     models, HTML→blocks, visibility/breaking rules, content API client,
+                                 OfflineLibrary, BookmarkStore (v2 + migration), ReadingPositionStore
+    HCGConnect                   configuration, PKCE, coordinator (sign-in, refresh, App Access,
+                                 organisation, reachability, sign-out), Keychain store
+    Newsroom                     drafts, DraftStore (autosave, snapshots, media, export/import),
+                                 NewsroomService (proposed API client), NewsroomGate
+    NewsAppModel                 ConfigurationStore, AppContainer/NewsAppEnvironment, screen models,
+                                 Account/Connection models, Newsroom/Editor/Admin models, event log, diagnostics
+    Tests/                       134 XCTest cases
 ```
 
-## 2. Data flow
+## 2. Composition and configuration
 
 ```
-HCGNewsConfiguration.json (bundle, optional)
-        │
-        ├── NewsConfigurationLoader ──► .ready ──► NewsAPIClient (proposed contract) ──┐
-        │                          └─► otherwise ► UnconfiguredNewsService (no network)  ├─► NewsService
-        │                                                                                 │
-        └── ConnectConfigurationLoader ─► HCGConnectCoordinator (actor)                   │
-                                            │  browser: SystemBrowserAuthenticator         │
-                                            │  store:   KeychainSessionStore               │
-                                            └─ validAccessToken() ─────────────────────────┘ (restricted articles only)
+LocalStores (survive configuration changes)
+  ConfigurationStore  publication.json / connect.json   (imported; else bundled; else none)
+  BookmarkStore       bookmarks.json (v2)
+  OfflineLibrary      Offline/manifest.json + articles/<key>/{article.json, images/*}
+  ReadingPositionStore, DraftStore (Newsroom/Drafts/<id>/…), LocalEventLog
 
-NewsAppEnvironment (@Observable)
-  ├─ HomeModel / SectionsModel / ArticleListModel (per section) / SearchModel / ArticleModel
-  ├─ SavedModel ── BookmarkStore (actor, JSON in Application Support)
-  ├─ AccountModel ── HCGConnectCoordinator
-  └─ LoadedArticleIndex (articles seen this session; used for labelled local search)
+AppContainer ── build() ──► NewsAppEnvironment (generation n)
+   │                        ├─ NewsService: NewsAPIClient (configured) | UnconfiguredNewsService(missing|invalid)
+   │                        ├─ HCGConnectCoordinator (configured or unavailable)
+   │                        ├─ NewsroomService: NewsroomAPIClient (if newsroomAPIBaseURL) | Unavailable
+   │                        └─ Home/Sections/Search/Saved/Article/Account/Connection/Newsroom/Admin models
+   └─ apply(preview) / remove(kind) → rebuild (generation n+1); on identity change:
+        coordinator.forgetLocalSession() + drafts.detachAllServerLinks() + log
 ```
 
-There is no code path that scrapes rendered web pages. With no configuration the app shows "Live publication not connected" plus a plain link to the website in Safari.
+Imports are two-step: `preview` (validate, no side effects), then `apply` (atomic write, previous file kept). The UI resets navigation when the generation changes.
 
-## 3. Layouts
+## 3. Reading and offline
 
-- **Compact width** (iPhone in any orientation; iPad Slide Over and narrow Split View): `TabView` with Home, Sections, Search and Saved. Each tab has its own `NavigationStack`. Settings is a sheet behind the gear button. The tab bar is at the bottom for one-handed reach.
-- **Regular width** (iPad full screen, wide Split View or Stage Manager): `NavigationSplitView`. The sidebar holds the destinations, the backend's sections (with their hierarchy) and Settings. The detail column has its own stack.
-- `Router` keeps the stacks. When the size class changes (rotation or Split View resize), `adoptCompact()` and `adoptRegular()` move the current stack across, so the reader keeps their place.
-- Content columns use readable maximum widths (articles 720 pt, feeds 760–1000 pt) and flexible layouts. Nothing uses fixed widths that could overflow a 320 pt column. At accessibility text sizes, rows and the lead card switch from side-by-side to stacked.
+- **Public reading never needs a token.** A bearer token is sent only after the content API marks an article restricted and the reader is signed in.
+- **Article sources.** `ArticleModel` loads the live article. If that fails as offline, unavailable or not configured, and a stored copy exists, it shows the copy labelled **"Stored copy from …"**. If the publication returns not-found (unpublished), the stored copy is *not* shown.
+- **Downloads.** Downloads are written to `tmp/` and swapped in only when complete, so a failed update never destroys the previous copy. `downloading` is persisted, and becomes `interrupted` at the next launch.
+- **Update detection.** Each copy stores a content marker (revision, else update time, else publication time). Newer markers seen in lists or the live article set "update available".
+- **What is refused.** Restricted and summary-only articles are refused. The storage limit is enforced without deleting other downloads.
+- **Bookmarks are separate from downloads.** Removing a download keeps the bookmark. There is no sync.
 
 ## 4. Content safety
 
-- **Untrusted HTML** (`HTMLContentParser`) becomes inert `ContentBlock` values, using an allow-list of output structures. There is no `WKWebView` anywhere in the app. Scripts, styles, forms, SVG and templates are dropped with their content. Event handlers and all other attributes are ignored. Embeds (iframe, video, audio, object, embed) become a notice with a link to the web article. Links survive only for `https`, `http` and `mailto`, including obfuscated `java\tscript:` forms. Images must be HTTPS. Input size and block count are capped.
-- **Link taps** go through an `OpenURLAction` that hands only web and mail links to the system. Anything else is discarded.
-- **Visibility** (`PublicationVisibility`) is defence in depth: items with a non-`published` status, no publication date, a publication date more than 5 minutes in the future, a blank headline or an unknown access value are hidden. `restricted` items are listed with a lock and require a server-authorised fetch. The backend remains the authority.
-- **Breaking** (`BreakingNewsRule`): only `breaking.active == true`, not expired, newest first, at most 5.
-- **Sharing** uses the canonical URL only when it is HTTPS on `hakmicapitalgroup.com`. Otherwise the Share button is hidden.
-- **Disclosures** come only from `authors[].disclosures` attached to verified author ids. They are shown verbatim in a "Disclosure" box under the byline. The app never matches display names and contains no disclosure text of its own.
+Unchanged from 0.1.0, with one addition:
+- No web view; untrusted HTML becomes inert blocks.
+- Links are limited to http(s) and mailto, and link taps go through an `OpenURLAction`.
+- Embeds and **unknown block types** become explicit notices.
+- Share uses only the canonical HTTPS HCG URL.
+- Disclosures, corrections, sponsor details and related stories are displayed only as supplied, never generated.
 
-## 5. Identity and authorization
+## 5. Identity and authorisation
 
-See [HCG-MAIN-CONFIGURATION-HANDOFF.md](HCG-MAIN-CONFIGURATION-HANDOFF.md). In short:
+- Public native client with PKCE in the system browser; sessions in the Keychain.
+- Organisation selection only when HCG lists several organisations. Capabilities and entitlements are displayed as issued.
+- **Configured, reachable and verified are separate states.** "Verified" for HCG Connect means a sign-in plus an App Access decision in this session.
+- **The newsroom gate requires all of:**
+  - a configured newsroom service;
+  - a signed-in reader;
+  - HCG App Access granted in this session (naming `newsroomPermission` if configured);
+  - the action in the service's `supportedActions`;
+  - the action in its `allowedActions`.
 
-- Public client with PKCE S256 in the system browser. No client secret can be configured.
-- Tokens are stored only in the Keychain (device-only, not synchronised), never logged, never put in URLs, and sent only in `Authorization` headers to configured endpoints.
-- Authorization comes from the App Access decision fetched in the current run. No roles are read, and nothing is inferred from email or name. The newsroom link needs an explicit central permission, and the newsroom enforces access itself.
-- Sign-out always clears the device and reports the central result honestly.
+  The service checks again on every request. The app has no role logic.
 
-## 6. Bookmarks
+## 6. Newsroom drafts
 
-- `BookmarkStore` (actor) writes `Application Support/HCGNews/bookmarks.json` atomically, with complete-until-first-unlock file protection on iOS.
-- Bookmarks are keyed by the stable `ArticleID`. Each holds a display snapshot (headline, section, type, byline, date, canonical URL) and **no article body**. The snapshot is refreshed when a saved article is opened.
-- A corrupt file is moved aside (`*.corrupt-<timestamp>.json`) rather than overwritten.
-- No cloud sync (no verified central contract).
+- **Local first.** Drafts are always labelled "Local draft". Save is local, autosave (every 2 s of inactivity, and when the app is backgrounded) protects against crashes, and recovery is offered at the next launch.
+- **Snapshots** are taken automatically every five minutes or more while saving, and on demand. Restoring snapshots the current version first.
+- **Export and import.** The export format is documented ([NEWSROOM-DRAFT-FORMAT.md](NEWSROOM-DRAFT-FORMAT.md)). Import always creates a new draft.
+- **Remote actions.** Each runs only on an explicit tap; nothing is queued. Updates carry `baseRevision`, and a `409` opens an explicit conflict sheet. Destructive actions show the affected article and need confirmation.
 
 ## 7. Design
 
-- **Future** (default): #05080F background, #0B1220 surfaces, #ECF1F7 text, #A2B0C3 secondary text, restrained cyan #3FD0E0 accent, serif (New York) headlines, sans body. Always dark. Under Increase Contrast, secondary text, separators and accent get stronger.
-- **Classic**: system backgrounds and labels (follows Light and Dark Mode), deep-navy / light-blue accent, serif headlines and serif body.
-- All text uses Dynamic Type text styles. The article's text-size control offsets the system size (−2…+3 steps, clamped to the accessibility sizes).
-- Images are never cropped and never carry an overlaid headline. Thumbnails fit inside a bounded box at their real proportions. A failed or missing image collapses instead of leaving an empty box. There are no fixed card heights.
-- Reduce Motion: breaking-headline changes are instant. There is no marquee or auto-advance in any mode.
-- VoiceOver: cards are single elements with type, headline, section, byline, date and restriction. Breaking controls have labels and announce the new headline. Headings carry the header trait. Decorative images without alt text are hidden.
+| Token | Light | Dark |
+|---|---|---|
+| Background | #FAFAF8 | #0B0B0C |
+| Surface (charcoal) | #F0F0EE | #17181A |
+| Primary text | #121212 | #F2F2F2 |
+| Secondary text | #4A4B50 | #A9ABB0 |
+| Silver (rules, quiet labels) | #8A8C91 | #8E9096 |
+| Accent (actions, status only) | #007C99 | #3FD0E0 |
+
+- Increase Contrast variants exist for text, silver, separators and accent.
+- Headlines use the serif face (New York); article body text is serif or sans, by preference.
+- All text uses Dynamic Type. The reader's text size can be offset further, up to the accessibility sizes.
+- Reduce Motion removes transitions. There is no auto-advance or marquee anywhere.

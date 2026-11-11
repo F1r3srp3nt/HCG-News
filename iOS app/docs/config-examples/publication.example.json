@@ -1,0 +1,10 @@
+{
+  "content": {
+    "contractVersion": "1",
+    "environment": "beta",
+    "apiBaseURL": "https://<news-host>/<content-api-path>/",
+    "publicationURL": "https://news.hakmicapitalgroup.com",
+    "newsroomAPIBaseURL": "https://<news-host>/<newsroom-api-path>/",
+    "approvedByFounder": false
+  }
+}

@@ -6,7 +6,7 @@ import HCGTransport
 /// There are NO built-in defaults: no endpoint is compiled into the app. The
 /// app reads `HCGNewsConfiguration.json` (key `content`) from its bundle. Until a
 /// file with every field, HTTPS HCG hosts and `approvedByFounder: true` is
-/// installed, the app shows "Live publication not connected".
+/// installed, the app shows "Publication not connected".
 public struct NewsContentConfiguration: Equatable, Sendable {
     /// Contract versions this build can decode.
     public static let supportedContractVersions: Set<String> = ["1"]

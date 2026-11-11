@@ -1,11 +1,4 @@
 {
-  "content": {
-    "contractVersion": "1",
-    "environment": "beta",
-    "apiBaseURL": "https://<news-host>/<content-api-path>/",
-    "publicationURL": "https://news.hakmicapitalgroup.com",
-    "approvedByFounder": false
-  },
   "connect": {
     "contractVersion": "1",
     "environment": "beta",
@@ -23,7 +16,10 @@
     "scopes": ["openid", "profile"],
     "appIdentifier": "<HCG News id in the App Access registry>",
     "newsroomPermission": "<central permission name>",
-    "newsroomURL": "https://<hcg-host>/<newsroom>",
+    "newsroomURL": "https://<hcg-host>/<newsroom-web>",
+    "managementLinks": [
+      { "title": "<e.g. Sections in HCG ERP>", "url": "https://<hcg-host>/<path>" }
+    ],
     "ephemeralBrowserSession": true,
     "approvedByFounder": false
   }

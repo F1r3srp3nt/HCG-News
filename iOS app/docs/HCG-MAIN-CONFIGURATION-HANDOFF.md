@@ -75,9 +75,25 @@ Signing in **never** grants a newsroom role. Granting `news.newsroom.open` is a 
 
 The app rejects a decision for another `appIdentifier` or another `subject`. `revoked` clears the local session. A `403` with no readable decision is shown as "Not granted".
 
+**Optional fields (added in app 0.2.0, PROPOSED).** The Account and Administration screens show these only when they are returned:
+
+```json
+{
+  "displayName": "<verified name>",
+  "email": "<verified email>",
+  "organizations": [{ "id": "<org id>", "name": "<org name>" }],
+  "organizationID": "<org the decision applies to>",
+  "entitlements": [{ "id": "<id>", "name": "<licence or subscription>", "status": "<active|…>", "validUntil": "…" }]
+}
+```
+
+Organisation selection is offered only when `organizations` has more than one entry. The app then calls `GET <appAccessEndpoint>?app=hcg-news-ios&organization=<id>`, and HCG decides access for that organisation.
+
 ## 5. The configuration file
 
-Install it as `iOS app/HCGNews/HCGNews/Configuration/HCGNewsConfiguration.json`. Xcode bundles that folder automatically. The path is git-ignored so that unapproved values are never committed. A template with placeholders is in [`HCGNewsConfiguration.example.json`](HCGNewsConfiguration.example.json). Both sections are independent: content can be connected before sign-in, and the other way round.
+**Since app 0.2.0, configuration is normally imported at runtime:** Settings › Advanced › Import Configuration, choosing a JSON file from Files. Publication and HCG Connect are imported separately. Each import is validated and previewed (environment and destinations) before anything changes. A failed import keeps the previous configuration. Imports persist across launches and can be exported or removed; removal falls back to the bundled file, if any. Changing the HCG Connect identity setup (environment, issuer, client id, app identifier or App Access endpoint) signs the reader out on the device and removes newsroom links from local drafts. Their text and media are kept. Examples: [`config-examples/`](config-examples/).
+
+The bundled alternative: install it as `iOS app/HCGNews/HCGNews/Configuration/HCGNewsConfiguration.json`. Xcode bundles that folder automatically. The path is git-ignored so that unapproved values are never committed. Templates with placeholders are in [`config-examples/`](config-examples/). Both sections are independent: content can be connected before sign-in, and the other way round.
 
 | Field | Required | Notes |
 |---|---|---|
@@ -92,6 +108,8 @@ Install it as `iOS app/HCGNews/HCGNews/Configuration/HCGNewsConfiguration.json`.
 | `connect.providerPublicKey` | no | anon key only; required for `provider-json` |
 | `connect.newsroomPermission`, `newsroomURL` | no | both, or neither |
 | `connect.ephemeralBrowserSession` | no | default `true` |
+| `connect.managementLinks` | no | `[{title, url}]`, HTTPS HCG hosts; shown in Administration |
+| `content.newsroomAPIBaseURL` | no | Newsroom API base ([NEWSROOM-API-PROPOSAL.md](NEWSROOM-API-PROPOSAL.md)) |
 | `connect.approvedByFounder` | yes | must be `true` |
 
 ## 6. Logout, expiry and revocation behaviour
@@ -125,7 +143,7 @@ Not requested, and not done by this project: changing central security policy, R
 
 ## 8. Acceptance tests once configured (on a device or simulator)
 
-1. No file installed: Home shows "Live publication not connected", Settings shows "isn't set up", and a network monitor shows **zero** HCG requests. (This is automated as a model test and a UI test.)
+1. No file installed: Home shows "Publication not connected", Settings shows "isn't set up", and a network monitor shows **zero** HCG requests. (This is automated as a model test and a UI test.)
 2. A file with a secret, an `http://` endpoint, or CardX's redirect: shown as invalid, and nothing is attempted. (Automated.)
 3. Approved file: *Sign In* opens the system browser at the HCG page. Cancel → "Sign-in was cancelled", with no token request.
 4. Successful sign-in → Keychain item created (device-only) → App Access fetched → status shown. The newsroom link appears **only** with `news.newsroom.open`.
@@ -145,4 +163,4 @@ Not requested, and not done by this project: changing central security policy, R
 > 2. A proposed **App Access read endpoint**: `GET …?app=hcg-news-ios` with a bearer token. It returns `{appIdentifier, subject, organizationID, status (granted|denied|revoked|unlicensed|suspended), permissions[], validUntil, reason}`, enforced server-side, with no inference from email or display name.
 > 3. Permission names for HCG News, including one that allows showing a newsroom entry point (proposed `news.newsroom.open`), plus the newsroom URL. Confirm that the newsroom enforces access itself.
 > 4. Logout semantics (local or global scope), access-token lifetime, refresh rotation and reuse detection, and how revocation surfaces.
-> 5. Filled-in values, or "TBD", for every `connect.*` field in HCG News' `iOS app/docs/HCGNewsConfiguration.example.json`, kept pending until the founder sets `approvedByFounder`.
+> 5. Filled-in values, or "TBD", for every `connect.*` field in HCG News' `iOS app/docs/config-examples/connect.example.json`, kept pending until the founder sets `approvedByFounder`.
