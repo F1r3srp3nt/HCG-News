@@ -28,6 +28,10 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(EditorialType(rawValue: "analysis").label, "Analysis")
         XCTAssertEqual(EditorialType(rawValue: "Opinion").label, "Opinion")
         XCTAssertEqual(EditorialType(rawValue: "commentary"), .opinion)
+        // Values and labels used by the publication's own code.
+        XCTAssertEqual(EditorialType(rawValue: "sponsored").label, "Sponsored")
+        XCTAssertEqual(EditorialType(rawValue: "announcement").label, "HCG Announcement")
+        XCTAssertEqual(EditorialType(rawValue: "announcement").wireValue, "announcement")
     }
 
     func testShareableURLOnlyForHCGHTTPS() throws {

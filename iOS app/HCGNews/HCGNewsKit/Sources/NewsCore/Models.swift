@@ -38,10 +38,16 @@ public struct ArticleID: Hashable, Codable, Sendable, CustomStringConvertible {
 }
 
 /// News / Analysis / Opinion distinction, preserved exactly as supplied.
+/// The five known values and their labels match the publication's own code
+/// (observed in news.hakmicapitalgroup.com's served bundle, 11 Nov 2026).
 public enum EditorialType: Hashable, Codable, Sendable {
     case news
     case analysis
     case opinion
+    /// Paid or partner content. Must always be visibly labelled.
+    case sponsored
+    /// HCG's own announcements.
+    case announcement
     /// A type the backend supplied that this version does not know. Shown verbatim.
     case other(String)
 
@@ -50,6 +56,8 @@ public enum EditorialType: Hashable, Codable, Sendable {
         case "news", "report", "reporting": self = .news
         case "analysis": self = .analysis
         case "opinion", "comment", "commentary", "op-ed", "oped": self = .opinion
+        case "sponsored": self = .sponsored
+        case "announcement": self = .announcement
         default: self = .other(rawValue)
         }
     }
@@ -68,6 +76,8 @@ public enum EditorialType: Hashable, Codable, Sendable {
         case .news: "news"
         case .analysis: "analysis"
         case .opinion: "opinion"
+        case .sponsored: "sponsored"
+        case .announcement: "announcement"
         case .other(let value): value
         }
     }
@@ -78,6 +88,8 @@ public enum EditorialType: Hashable, Codable, Sendable {
         case .news: "News"
         case .analysis: "Analysis"
         case .opinion: "Opinion"
+        case .sponsored: "Sponsored"
+        case .announcement: "HCG Announcement"
         case .other(let value): value.capitalized
         }
     }
