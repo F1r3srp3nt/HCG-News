@@ -1,11 +1,26 @@
 import Foundation
 import NewsCore
 
-/// A reader-facing explanation of a failure. No technical detail that could
-/// leak data; no invented reassurance.
+/// A reader-facing explanation of a failure. Each kind is a distinct state with
+/// its own wording and action; nothing is replaced by sample content.
 public struct UserFacingError: Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
-        case notConfigured, offline, notFound, restricted, forbidden, rateLimited, unavailable, contract, other
+        /// No publication configuration installed.
+        case notConfigured
+        /// A configuration is installed but invalid.
+        case invalidConfiguration
+        case offline
+        case notFound
+        /// Backend marks the content as requiring an authorised HCG account.
+        case restricted
+        /// Signed in, but HCG or the service refused.
+        case forbidden
+        case rateLimited
+        /// The service failed or is unavailable.
+        case unavailable
+        /// The response did not match the agreed contract.
+        case contract
+        case other
     }
 
     public let kind: Kind
@@ -18,12 +33,16 @@ public struct UserFacingError: Equatable, Sendable {
         let serviceError = error as? NewsServiceError ?? .other(String(describing: type(of: error)))
         switch serviceError {
         case .notConfigured:
-            self.init(.notConfigured, "Live publication not connected",
-                      "This build is not yet connected to the HCG News publication. It shows no articles until HCG confirms the supported content API.",
+            self.init(.notConfigured, "Publication not connected",
+                      "This copy of HCG News has no publication connection set up, so it shows no articles. A connection can be added under Settings › Advanced.",
                       "antenna.radiowaves.left.and.right.slash", retry: false)
+        case .invalidConfiguration:
+            self.init(.invalidConfiguration, "Publication settings need attention",
+                      "The installed publication configuration can't be used. Review it under Settings › Advanced, or remove it to return to the built-in settings.",
+                      "exclamationmark.triangle", retry: false)
         case .offline:
             self.init(.offline, "You're offline",
-                      "HCG News couldn't reach the publication. Check your connection and try again.",
+                      "HCG News couldn't reach the publication. Downloaded articles are still available in Saved.",
                       "wifi.slash", retry: true)
         case .timedOut:
             self.init(.offline, "The publication is taking too long",
@@ -34,7 +53,7 @@ public struct UserFacingError: Equatable, Sendable {
                       "doc.questionmark", retry: false)
         case .restricted:
             self.init(.restricted, "Sign-in required",
-                      "HCG News marks this article as available to authorised HCG accounts only.",
+                      "The publication marks this article as available to authorised HCG accounts only.",
                       "lock", retry: false)
         case .forbidden:
             self.init(.forbidden, "No access",
@@ -65,6 +84,9 @@ public struct UserFacingError: Equatable, Sendable {
         self.systemImage = systemImage
         self.canRetry = retry
     }
+
+    /// True for states caused by configuration rather than the network or server.
+    public var isConfigurationProblem: Bool { kind == .notConfigured || kind == .invalidConfiguration }
 }
 
 public enum LoadState<Value: Equatable & Sendable>: Equatable, Sendable {

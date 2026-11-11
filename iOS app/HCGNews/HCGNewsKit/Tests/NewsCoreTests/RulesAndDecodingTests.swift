@@ -79,7 +79,8 @@ final class DecodingTests: XCTestCase {
         ]
         let response = try HCGJSON.makeDecoder().decode(ArticleResponse.self, from: JSONFixture.data(object))
         let article = response.article(baseURL: URL(string: "https://news.hakmicapitalgroup.com"))
-        XCTAssertEqual(article.blocks.count, 8, "unknown block types are skipped")
+        XCTAssertEqual(article.blocks.count, 9, "unknown block types become a notice, not lost silently")
+        XCTAssertEqual(article.blocks[7], .unsupported(type: "poll"))
         guard case .paragraph(let literal) = article.blocks[2] else { return XCTFail() }
         XCTAssertEqual(literal.plainText, "<b>literal</b>", "plain text fields are never parsed as HTML")
         XCTAssertEqual(article.blocks[6], .embedNotice(host: "social.example"))

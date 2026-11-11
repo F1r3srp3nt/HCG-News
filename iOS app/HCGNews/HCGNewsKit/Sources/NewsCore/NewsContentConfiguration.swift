@@ -18,13 +18,18 @@ public struct NewsContentConfiguration: Equatable, Sendable {
     /// The public publication origin, used to resolve relative links in article HTML.
     public let publicationURL: URL
     public let approvedByFounder: Bool
+    /// Optional newsroom (editorial write) API base, hosted by the publication.
+    /// Requires an HCG Connect token; every action is authorised server-side.
+    public let newsroomAPIBaseURL: URL?
 
-    public init(contractVersion: String, environment: String, apiBaseURL: URL, publicationURL: URL, approvedByFounder: Bool) {
+    public init(contractVersion: String, environment: String, apiBaseURL: URL, publicationURL: URL,
+                approvedByFounder: Bool, newsroomAPIBaseURL: URL? = nil) {
         self.contractVersion = contractVersion
         self.environment = environment
         self.apiBaseURL = apiBaseURL
         self.publicationURL = publicationURL
         self.approvedByFounder = approvedByFounder
+        self.newsroomAPIBaseURL = newsroomAPIBaseURL
     }
 }
 
@@ -44,6 +49,7 @@ public enum NewsConfigurationLoader {
             let apiBaseURL: String?
             let publicationURL: String?
             let approvedByFounder: Bool?
+            let newsroomAPIBaseURL: String?
         }
         let content: Content?
     }
@@ -90,6 +96,13 @@ public enum NewsConfigurationLoader {
                 problems.append("content.publicationURL must be an HTTPS URL on an HCG host.")
             }
         }
+        var newsroomURL: URL?
+        if let raw = content.newsroomAPIBaseURL, !raw.contains("<"), !raw.isEmpty {
+            newsroomURL = URL(string: raw.hasSuffix("/") ? raw : raw + "/")
+            if !HCGHostPolicy.isTrustedHCGURL(newsroomURL) {
+                problems.append("content.newsroomAPIBaseURL must be an HTTPS URL on an HCG host.")
+            }
+        }
         if content.approvedByFounder != true {
             problems.append("The configuration has not been approved by the founder (approvedByFounder is not true).")
         }
@@ -98,6 +111,6 @@ public enum NewsConfigurationLoader {
         }
         return .ready(NewsContentConfiguration(
             contractVersion: version, environment: environment, apiBaseURL: apiURL,
-            publicationURL: publicationURL, approvedByFounder: true))
+            publicationURL: publicationURL, approvedByFounder: true, newsroomAPIBaseURL: newsroomURL))
     }
 }

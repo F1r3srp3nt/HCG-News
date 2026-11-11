@@ -55,6 +55,9 @@ public enum ContentBlock: Hashable, Sendable {
     /// Embedded third-party content (video, social post, iframe) that the app
     /// deliberately does not load. Rendered as a notice with a link to the web article.
     case embedNotice(host: String?)
+    /// A block type this version cannot display. Rendered as a clear notice so the
+    /// reader knows something is missing; the rest of the article still renders.
+    case unsupported(type: String)
 }
 
 /// Link and image URL rules for untrusted article content.

@@ -8,6 +8,10 @@ import HCGTransport
 public struct MetaResponse: Decodable, Sendable {
     public struct Capabilities: Decodable, Sendable {
         public let search: Bool?
+        /// Filters the server search endpoint accepts, e.g. ["section", "type"].
+        public let searchFilters: [String]?
+        /// True when article detail returns the full body (offline download allowed).
+        public let fullContent: Bool?
     }
     public let contractVersion: String
     public let capabilities: Capabilities?
@@ -38,6 +42,10 @@ struct ArticleResponse: Decodable {
     let summary: ArticleSummary
     let body: Body?
     let sources: [ArticleSource]
+    let corrections: [ArticleCorrection]
+    let sponsor: SponsorNotice?
+    let audio: ArticleAudio?
+    let related: [ArticleSummary]
 
     struct Body: Decodable {
         let format: String
@@ -45,29 +53,50 @@ struct ArticleResponse: Decodable {
         let html: String?
     }
 
-    enum CodingKeys: String, CodingKey { case body, sources }
+    enum CodingKeys: String, CodingKey { case body, sources, corrections, sponsor, audio, related }
 
     init(from decoder: Decoder) throws {
         summary = try ArticleSummary(from: decoder)
         let c = try decoder.container(keyedBy: CodingKeys.self)
         body = try c.decodeIfPresent(Body.self, forKey: .body)
         sources = (try? c.decodeIfPresent([ArticleSource].self, forKey: .sources)) ?? []
+        // Optional editorial metadata: malformed entries are dropped, never invented.
+        corrections = ((try? c.decodeIfPresent([ArticleCorrection].self, forKey: .corrections)) ?? [])
+            .filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .sorted { ($0.issuedAt ?? .distantPast) > ($1.issuedAt ?? .distantPast) }
+        sponsor = try? c.decodeIfPresent(SponsorNotice.self, forKey: .sponsor)
+        if let audio = try? c.decodeIfPresent(ArticleAudio.self, forKey: .audio), audio.url.scheme?.lowercased() == "https" {
+            self.audio = audio
+        } else {
+            self.audio = nil
+        }
+        related = (try? c.decodeIfPresent([ArticleSummary].self, forKey: .related)) ?? []
     }
 
-    func article(baseURL: URL?) -> Article {
+    func article(baseURL: URL?, now: Date = Date()) -> Article {
         let parser = HTMLContentParser(baseURL: baseURL ?? summary.canonicalURL)
         var blocks: [ContentBlock] = []
+        var completeness = ContentCompleteness.full
         if let body {
             switch body.format.lowercased() {
             case "blocks":
+                // Unknown block types become an explicit notice; blank blocks are dropped.
                 blocks = (body.blocks ?? []).compactMap { $0.contentBlock(parser: parser) }
             case "html":
                 blocks = parser.parse(body.html ?? "")
+            case "summary":
+                completeness = .summaryOnly
             default:
-                blocks = []   // Unknown body format: shown as "content unavailable" by the UI.
+                // Unknown body format: kept as an explicit notice so the rest of the article still shows.
+                blocks = [.unsupported(type: body.format)]
             }
+        } else {
+            completeness = .summaryOnly
         }
-        return Article(summary: summary, blocks: blocks, sources: sources)
+        return Article(summary: summary, blocks: blocks, sources: sources, corrections: corrections,
+                       sponsor: sponsor, audio: audio,
+                       related: PublicationVisibility.filter(related, now: now).filter { $0.id != summary.id },
+                       completeness: completeness)
     }
 }
 
@@ -127,7 +156,7 @@ struct WireBlock: Decodable {
         case "embed":
             return .embedNotice(host: url.flatMap { URL(string: $0)?.host })
         default:
-            return nil
+            return .unsupported(type: type)
         }
     }
 }

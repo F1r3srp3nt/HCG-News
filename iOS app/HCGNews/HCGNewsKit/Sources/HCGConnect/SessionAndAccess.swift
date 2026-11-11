@@ -12,6 +12,8 @@ public struct ConnectSession: Codable, Equatable, Sendable {
     public var displayName: String?
     /// Configuration environment the session was issued for.
     public var environment: String
+    /// Organisation the reader chose among those HCG offered (nil = HCG's default).
+    public var selectedOrganizationID: String?
 
     public init(accessToken: String, refreshToken: String?, expiresAt: Date, subject: String?,
                 displayName: String?, environment: String) {
@@ -125,6 +127,23 @@ public struct AppAccessDecision: Codable, Equatable, Sendable {
         }
     }
 
+    public struct Organization: Codable, Equatable, Sendable, Identifiable {
+        public let id: String
+        public let name: String
+        public init(id: String, name: String) { self.id = id; self.name = name }
+    }
+
+    /// A licence or subscription entitlement as reported by HCG. Displayed only.
+    public struct Entitlement: Codable, Equatable, Sendable, Identifiable {
+        public let id: String
+        public let name: String
+        public let status: String
+        public let validUntil: Date?
+        public init(id: String, name: String, status: String, validUntil: Date?) {
+            self.id = id; self.name = name; self.status = status; self.validUntil = validUntil
+        }
+    }
+
     public let appIdentifier: String
     public let subject: String
     public let organizationID: String?
@@ -133,9 +152,17 @@ public struct AppAccessDecision: Codable, Equatable, Sendable {
     public let permissions: [String]
     public let validUntil: Date?
     public let reason: String?
+    /// Identity details verified by HCG (optional; shown only when supplied).
+    public let displayName: String?
+    public let email: String?
+    /// Organisations the subject may act for (optional). Selection is only offered when HCG lists several.
+    public let organizations: [Organization]?
+    public let entitlements: [Entitlement]?
 
     public init(appIdentifier: String, subject: String, organizationID: String? = nil, status: Status,
-                permissions: [String], validUntil: Date? = nil, reason: String? = nil) {
+                permissions: [String], validUntil: Date? = nil, reason: String? = nil,
+                displayName: String? = nil, email: String? = nil, organizations: [Organization]? = nil,
+                entitlements: [Entitlement]? = nil) {
         self.appIdentifier = appIdentifier
         self.subject = subject
         self.organizationID = organizationID
@@ -143,6 +170,16 @@ public struct AppAccessDecision: Codable, Equatable, Sendable {
         self.permissions = permissions
         self.validUntil = validUntil
         self.reason = reason
+        self.displayName = displayName
+        self.email = email
+        self.organizations = organizations
+        self.entitlements = entitlements
+    }
+
+    /// The organisation in effect, when HCG named it.
+    public var currentOrganization: Organization? {
+        guard let organizationID else { return nil }
+        return organizations?.first { $0.id == organizationID }
     }
 
     /// True only for a granted, unexpired decision that names `permission`.

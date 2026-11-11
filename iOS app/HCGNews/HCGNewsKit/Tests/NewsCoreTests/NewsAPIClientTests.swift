@@ -176,10 +176,11 @@ final class NewsAPIClientTests: XCTestCase {
             "meta": Self.ok(JSONFixture.meta(search: true)),
             "search": Self.ok(["items": [JSONFixture.summary(id: "s1")], "nextCursor": NSNull()]),
         ])
-        let page = try await client(supported).search(query: "test query", cursor: nil)
+        let page = try await client(supported).search(query: "test query", filters: SearchFilters(sectionSlug: "markets"), cursor: nil)
         XCTAssertEqual(page.items.count, 1)
         let searchURL = supported.requests.last!.url!
         XCTAssertTrue(searchURL.absoluteString.contains("q=test%20query"))
+        XCTAssertFalse(searchURL.absoluteString.contains("section="), "filters the server did not declare are never sent")
     }
 
     func testUnconfiguredServiceNeverReturnsContent() async {

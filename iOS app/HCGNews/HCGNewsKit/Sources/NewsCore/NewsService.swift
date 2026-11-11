@@ -4,6 +4,8 @@ import Foundation
 public enum NewsServiceError: Error, Equatable, Sendable {
     /// No approved content API configuration is installed in this build.
     case notConfigured
+    /// A configuration is installed but cannot be used (see the configuration problems).
+    case invalidConfiguration
     /// Device offline or host unreachable.
     case offline
     case timedOut
@@ -33,21 +35,37 @@ public protocol NewsService: Sendable {
     func sections() async throws -> [NewsSection]
     func articles(sectionSlug: String?, cursor: String?) async throws -> ArticlePage
     func article(id: ArticleID) async throws -> Article
-    /// Only called when `capabilities().serverSearch` is true.
-    func search(query: String, cursor: String?) async throws -> ArticlePage
+    /// Forces a fresh contract check (used by "Check connection").
+    func verifyConnection() async throws -> NewsCapabilities
+    /// Only called when `capabilities().serverSearch` is true. Only filters in
+    /// `capabilities().serverSearchFilters` are sent to the server.
+    func search(query: String, filters: SearchFilters, cursor: String?) async throws -> ArticlePage
 }
 
 /// Used when no approved configuration exists. Never returns content.
 public struct UnconfiguredNewsService: NewsService {
     /// Human-readable reasons the configuration is missing or invalid.
     public let reasons: [String]
+    /// True when a configuration exists but is invalid (as opposed to missing).
+    public let invalid: Bool
 
-    public init(reasons: [String]) { self.reasons = reasons }
+    public init(reasons: [String], invalid: Bool = false) {
+        self.reasons = reasons
+        self.invalid = invalid
+    }
 
-    public func capabilities() async throws -> NewsCapabilities { throw NewsServiceError.notConfigured }
-    public func home() async throws -> HomeFeed { throw NewsServiceError.notConfigured }
-    public func sections() async throws -> [NewsSection] { throw NewsServiceError.notConfigured }
-    public func articles(sectionSlug: String?, cursor: String?) async throws -> ArticlePage { throw NewsServiceError.notConfigured }
-    public func article(id: ArticleID) async throws -> Article { throw NewsServiceError.notConfigured }
-    public func search(query: String, cursor: String?) async throws -> ArticlePage { throw NewsServiceError.notConfigured }
+    private var error: NewsServiceError { invalid ? .invalidConfiguration : .notConfigured }
+
+    public func capabilities() async throws -> NewsCapabilities { throw error }
+    public func home() async throws -> HomeFeed { throw error }
+    public func sections() async throws -> [NewsSection] { throw error }
+    public func articles(sectionSlug: String?, cursor: String?) async throws -> ArticlePage { throw error }
+    public func article(id: ArticleID) async throws -> Article { throw error }
+    public func search(query: String, filters: SearchFilters, cursor: String?) async throws -> ArticlePage { throw error }
+    public func verifyConnection() async throws -> NewsCapabilities { throw error }
+}
+
+extension NewsService {
+    /// Re-checks the connection from scratch (no cached contract information).
+    public func verifyConnection() async throws -> NewsCapabilities { try await capabilities() }
 }
