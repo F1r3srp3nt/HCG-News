@@ -48,7 +48,7 @@ If `contractVersion` differs from the version the app was configured for, the ap
   "headline": "…",
   "standfirst": "…",              // optional
   "section": { "id": "…", "slug": "…", "name": "…" },
-  "editorialType": "news" | "analysis" | "opinion",          // other values shown verbatim
+  "editorialType": "news" | "analysis" | "opinion" | "sponsored" | "announcement",  // the site's own values; others shown verbatim
   "authors": [ Author ],
   "publishedAt": "2026-11-03T10:15:00Z",
   "updatedAt": "2026-11-03T11:00:00Z",                       // optional

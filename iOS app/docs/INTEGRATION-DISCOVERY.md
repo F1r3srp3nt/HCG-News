@@ -2,6 +2,8 @@
 
 Status: **Milestone 1 discovery record, 3 November 2026.** Nothing in this document was tested against a live HCG server. This environment's network policy blocked every HCG host (see §1).
 
+> **Update, 11 November 2026:** the cloud environment can now reach the HCG hosts. What the site actually serves is recorded in [SITE-INSPECTION-2026-11-11.md](SITE-INSPECTION-2026-11-11.md). Summary: there is still **no supported API or feed**; the site uses internal TanStack server functions. Editorial types, statuses, the visibility rule, sections and the current disclosure text were observed in the site's own code and pages. The inputs in §5 still need the owner's confirmation.
+
 ## Labels
 
 | Label | Meaning |

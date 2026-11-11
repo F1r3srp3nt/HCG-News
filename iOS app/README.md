@@ -22,6 +22,7 @@ The app consumes the publication's content and HCG's central identity. It has no
 | Build and test | [docs/BUILD-AND-TEST.md](docs/BUILD-AND-TEST.md) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | What was found, and what's missing | [docs/INTEGRATION-DISCOVERY.md](docs/INTEGRATION-DISCOVERY.md) |
+| What the live site serves (11 Nov 2026) | [docs/SITE-INSPECTION-2026-11-11.md](docs/SITE-INSPECTION-2026-11-11.md) |
 | Proposed content contract | [docs/HCG-NEWS-CONTENT-API-PROPOSAL.md](docs/HCG-NEWS-CONTENT-API-PROPOSAL.md) |
 | HCG Connect / ERP handoff | [docs/HCG-MAIN-CONFIGURATION-HANDOFF.md](docs/HCG-MAIN-CONFIGURATION-HANDOFF.md) |
 | Milestone report and next steps | [docs/MILESTONE-1-REPORT.md](docs/MILESTONE-1-REPORT.md) |
