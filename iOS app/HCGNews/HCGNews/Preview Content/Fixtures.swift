@@ -4,54 +4,53 @@ import NewsCore
 import NewsAppModel
 import HCGConnect
 import HCGTransport
+import Newsroom
 
-// DEBUG-ONLY FIXTURES for SwiftUI previews and UI tests.
+// DEBUG-ONLY DEVELOPMENT FIXTURES for previews and UI tests.
 //
-// - Compiled out of Release builds (#if DEBUG).
-// - Active in a running app only when launched with HCGNEWS_UI_TEST_FIXTURES=1
-//   (set by the UI tests), and then an orange "TEST FIXTURES — not live reporting"
-//   banner is shown on every screen.
-// - All text is fictional placeholder copy. It names no real people, parties or
-//   events and must never be presented as HCG News reporting.
+// - Compiled out of Release builds.
+// - Active in a running app only when launched with HCGNEWS_UI_TEST_FIXTURES=1; an
+//   orange "DEVELOPMENT FIXTURES — not live reporting" banner is then shown everywhere.
+// - Stored in a separate folder (Application Support/HCGNews-DevFixtures), so fixture
+//   bookmarks, downloads and drafts never mix with real user data.
+// - All text is fictional placeholder copy naming no real people, parties or events.
+// - Never used as a fallback when live requests fail.
 
 @MainActor
 enum UITestFixtures {
-    static func environmentIfRequested() -> NewsAppEnvironment? {
+    static func containerIfRequested() -> AppContainer? {
         let env = ProcessInfo.processInfo.environment
         guard env["HCGNEWS_UI_TEST_FIXTURES"] == "1" else { return nil }
-        let support = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                                    appropriateFor: nil, create: true))
+        let support = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
-        let bookmarks = support.appendingPathComponent("HCGNews-UITest", isDirectory: true)
-            .appendingPathComponent("bookmarks.json")
-        if env["HCGNEWS_UI_TEST_RESET"] == "1" {
-            try? FileManager.default.removeItem(at: bookmarks)
-        }
-        return PreviewFixtures.environment(offline: env["HCGNEWS_UI_TEST_OFFLINE"] == "1",
-                                           emptyHome: env["HCGNEWS_UI_TEST_EMPTY"] == "1",
-                                           bookmarkURL: bookmarks)
+        let root = support.appendingPathComponent("HCGNews-DevFixtures", isDirectory: true)
+        if env["HCGNEWS_UI_TEST_RESET"] == "1" { try? FileManager.default.removeItem(at: root) }
+        return PreviewFixtures.container(root: root,
+                                         offline: env["HCGNEWS_UI_TEST_OFFLINE"] == "1",
+                                         emptyHome: env["HCGNEWS_UI_TEST_EMPTY"] == "1")
     }
 }
 
 enum PreviewFixtures {
     @MainActor
-    static func environment(offline: Bool = false, emptyHome: Bool = false, bookmarkURL: URL? = nil) -> NewsAppEnvironment {
-        let url = bookmarkURL ?? FileManager.default.temporaryDirectory
-            .appendingPathComponent("hcgnews-preview-\(UUID().uuidString).json")
+    static func container(root: URL? = nil, offline: Bool = false, emptyHome: Bool = false) -> AppContainer {
+        let root = root ?? FileManager.default.temporaryDirectory.appendingPathComponent("hcgnews-preview-\(UUID().uuidString)")
+        let platform = PlatformServices(transport: FixtureTransport(), browser: NoBrowser(), sessionStore: NoSessionStore(),
+                                        userAgent: "HCGNews-Fixtures", redirectScheme: "com.hakmicapitalgroup.hcgnews", appVersion: "fixtures")
+        let stores = LocalStores.rooted(at: root, bundledConfiguration: nil, redirectScheme: platform.redirectScheme)
         let configuration = NewsContentConfiguration(
-            contractVersion: "1", environment: "test-fixtures",
-            apiBaseURL: URL(string: "https://news.hakmicapitalgroup.com/test-fixtures/")!,
-            publicationURL: URL(string: "https://news.hakmicapitalgroup.com")!,
-            approvedByFounder: true)
-        let coordinator = HCGConnectCoordinator(
-            configuration: .awaitingSetup, browser: NoBrowser(), store: NoSessionStore(),
-            transport: NoTransport(), userAgent: "HCGNews-Fixtures")
-        return NewsAppEnvironment(
-            contentConfiguration: .ready(configuration),
+            contractVersion: "1", environment: "development-fixtures",
+            apiBaseURL: URL(string: "https://news.hakmicapitalgroup.com/development-fixtures/")!,
+            publicationURL: URL(string: "https://news.hakmicapitalgroup.com")!, approvedByFounder: true)
+        let coordinator = HCGConnectCoordinator(configuration: .awaitingSetup, browser: NoBrowser(), store: NoSessionStore(),
+                                                transport: FixtureTransport(), userAgent: "fixtures")
+        let environment = NewsAppEnvironment(
+            publication: (.ready(configuration), .bundled), connect: (.awaitingSetup, .none),
             service: FixtureNewsService(offline: offline, emptyHome: emptyHome),
-            bookmarks: BookmarkStore(fileURL: url),
-            connect: coordinator,
+            newsroomService: UnavailableNewsroomService(), newsroomServiceConfigured: false,
+            coordinator: coordinator, stores: stores, transport: FixtureTransport(), appVersion: "fixtures",
             isUsingTestFixtures: true)
+        return AppContainer(fixedEnvironment: environment, platform: platform, stores: stores)
     }
 
     static let base = Date(timeIntervalSince1970: 1_790_000_000)
@@ -62,6 +61,7 @@ enum PreviewFixtures {
         NewsSection(id: "fx-3", slug: "fixture-international-politics", name: "International Politics (fixture)", parentSlug: "fixture-politics", position: 3),
         NewsSection(id: "fx-4", slug: "fixture-business", name: "Business (fixture)", position: 4),
         NewsSection(id: "fx-5", slug: "fixture-empty", name: "Empty Section (fixture)", description: "Used to test the empty state.", position: 5),
+        NewsSection(id: "fx-6", slug: "fixture-unknown-child", name: "Orphan Section (fixture)", parentSlug: "not-in-list", position: 6),
     ]
 
     static let author = Author(
@@ -69,30 +69,24 @@ enum PreviewFixtures {
         disclosures: [AuthorDisclosure(id: "fixture-disclosure-1", authorID: "fixture-author-1",
                                        text: "Fixture disclosure. In production this text comes verbatim from the publication's backend for the verified author.")])
 
-    static func summary(_ n: Int, type: EditorialType = .news, section: NewsSection? = nil, breaking: Bool = false,
-                        featured: Bool = false, restricted: Bool = false, headline: String? = nil,
-                        image: Bool = true, authors: [Author]? = nil) -> ArticleSummary {
-        let s = section ?? sections[n % 4]
+    static func summary(_ n: Int, type: EditorialType = .news, breaking: Bool = false, featured: Bool = false,
+                        restricted: Bool = false, headline: String? = nil, image: Bool = true, authors: [Author]? = nil) -> ArticleSummary {
+        let s = sections[n % 4]
         return ArticleSummary(
-            id: ArticleID("fixture-\(n)"),
-            slug: "fixture-\(n)",
-            canonicalURL: URL(string: "https://news.hakmicapitalgroup.com/test-fixtures/fixture-\(n)"),
+            id: ArticleID("fixture-\(n)"), slug: "fixture-\(n)",
+            canonicalURL: URL(string: "https://news.hakmicapitalgroup.com/development-fixtures/fixture-\(n)"),
             headline: headline ?? "Fixture headline \(n): placeholder text for layout testing",
             standfirst: "Fixture standfirst \(n). Placeholder copy used only to test wrapping, spacing and truncation.",
-            section: s.ref,
-            editorialType: type,
+            section: s.ref, editorialType: type,
             authors: authors ?? [Author(id: "fixture-author-\(n % 3 + 2)", name: "Fixture Writer \(n % 3 + 1)")],
             publishedAt: base.addingTimeInterval(-Double(n) * 3600),
             updatedAt: n == 1 ? base.addingTimeInterval(-600) : nil,
-            // Images point at a non-resolvable host: this exercises the "missing image" path.
-            image: image ? ArticleImage(url: URL(string: "https://fixture-images.invalid/\(n).jpg")!,
-                                        width: 1600, height: n.isMultiple(of: 2) ? 900 : 1600,
-                                        alt: "Fixture image \(n)", caption: "Fixture caption \(n).",
-                                        credit: "Fixture credit") : nil,
+            image: image ? ArticleImage(url: URL(string: "https://fixture-images.invalid/\(n).jpg")!, width: 1600,
+                                        height: n.isMultiple(of: 2) ? 900 : 1600, alt: "Fixture image \(n)",
+                                        caption: "Fixture caption \(n).", credit: "Fixture credit") : nil,
             isFeatured: featured,
             breaking: breaking ? BreakingFlag(active: true, label: "Breaking") : nil,
-            access: restricted ? .restricted : .public,
-            status: "published")
+            access: restricted ? .restricted : .public, status: "published", revision: "1")
     }
 
     static let longHeadline = "Fixture long headline: an intentionally very long title that keeps going across several lines so that wrapping, Dynamic Type at accessibility sizes and narrow Split View widths can be checked without clipping or horizontal overflow"
@@ -102,18 +96,22 @@ enum PreviewFixtures {
     }
 
     static var breaking: [ArticleSummary] {
-        [summary(2, breaking: true), summary(3, type: .news, breaking: true, headline: "Fixture breaking headline two")]
+        [summary(2, breaking: true), summary(3, breaking: true, headline: "Fixture breaking headline two")]
     }
 
     static var latest: [ArticleSummary] {
         (2...14).map { n in
-            summary(n, type: [.news, .analysis, .opinion][n % 3], breaking: n == 2 || n == 3,
-                    restricted: n == 7, image: n % 4 != 0)
+            let types: [EditorialType] = [.news, .analysis, .opinion, .sponsored, .announcement]
+            return summary(n, type: types[n % 5], breaking: n == 2 || n == 3, restricted: n == 7, image: n % 4 != 0)
         }
     }
 
-    static func article(_ summary: ArticleSummary) -> Article {
-        Article(summary: summary, blocks: [
+    static func article(_ s: ArticleSummary) -> Article {
+        let number = Int(s.id.rawValue.split(separator: "-").last ?? "0") ?? 0
+        if number == 11 {
+            return Article(summary: s, blocks: [], completeness: .summaryOnly)
+        }
+        return Article(summary: s, blocks: [
             .paragraph(InlineText([InlineRun("Fixture paragraph with "), InlineRun("bold", bold: true), InlineRun(", "),
                                    InlineRun("italic", italic: true), InlineRun(" and a "),
                                    InlineRun("source link", link: URL(string: "https://example.org/fixture-source")),
@@ -122,14 +120,18 @@ enum PreviewFixtures {
             .list(ordered: false, items: [ListItem(text: InlineText(plain: "First fixture point")),
                                           ListItem(text: InlineText(plain: "Nested fixture point"), level: 1),
                                           ListItem(text: InlineText(plain: "Second fixture point"))]),
-            .list(ordered: true, items: [ListItem(text: InlineText(plain: "Step one")), ListItem(text: InlineText(plain: "Step two"))]),
             .quote(paragraphs: [InlineText(plain: "A fixture quotation used to test quote styling.")], attribution: "Fixture Speaker"),
             .image(ArticleImage(url: URL(string: "https://fixture-images.invalid/body.jpg")!, width: 1200, height: 800,
                                 alt: "Fixture body image", caption: "Fixture body caption.", credit: "Fixture credit")),
             .embedNotice(host: "video.example.com"),
+            .unsupported(type: "fixture-poll"),
             .divider,
             .paragraph(InlineText(plain: "Closing fixture paragraph.")),
-        ], sources: [ArticleSource(title: "Fixture source document", url: URL(string: "https://example.org/fixture-report"), publisher: "Example Publisher")])
+        ],
+        sources: [ArticleSource(title: "Fixture source document", url: URL(string: "https://example.org/fixture-report"), publisher: "Example Publisher")],
+        corrections: number == 1 ? [ArticleCorrection(id: "fc1", text: "Fixture correction: a date in this placeholder article was corrected.", issuedAt: base)] : [],
+        sponsor: s.editorialType == .sponsored ? SponsorNotice(sponsorName: "Fixture Partner", text: nil, url: nil) : nil,
+        related: number == 1 ? [summary(4), summary(5)] : [])
     }
 }
 
@@ -147,7 +149,7 @@ actor FixtureNewsService: NewsService {
 
     func capabilities() async throws -> NewsCapabilities {
         try check()
-        return NewsCapabilities(serverSearch: false)
+        return NewsCapabilities(serverSearch: false, fullContent: true)
     }
 
     func home() async throws -> HomeFeed {
@@ -177,9 +179,14 @@ actor FixtureNewsService: NewsService {
         return PreviewFixtures.article(summary)
     }
 
-    func search(query: String, cursor: String?) async throws -> ArticlePage {
+    func search(query: String, filters: SearchFilters, cursor: String?) async throws -> ArticlePage {
         throw NewsServiceError.contractMismatch("Server search is not offered by fixtures.")
     }
+}
+
+/// No network for fixtures: image downloads fail, which exercises "image unavailable offline".
+struct FixtureTransport: HTTPTransport {
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) { throw TransportError.offline }
 }
 
 private struct NoBrowser: BrowserAuthenticating {
@@ -194,43 +201,34 @@ private struct NoSessionStore: ConnectSessionStoring {
     func delete() throws {}
 }
 
-private struct NoTransport: HTTPTransport {
-    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) { throw TransportError.offline }
-}
-
 // MARK: - Previews
 
-#Preview("Home – Future, iPhone") {
-    NavigationStack { HomeView().newsDestinations() }
-        .environment(PreviewFixtures.environment())
+@MainActor
+private func previewRoot<V: View>(_ container: AppContainer, @ViewBuilder _ content: () -> V) -> some View {
+    content()
+        .environment(container)
+        .environment(container.environment)
         .environment(Router())
         .hcgThemed()
 }
 
-#Preview("Article – Classic") {
-    NavigationStack { ArticleScreen(id: ArticleID("fixture-1")) }
-        .environment(PreviewFixtures.environment())
-        .environment(Router())
-        .hcgThemed()
-        .defaultAppStorage(UserDefaults(suiteName: "preview-classic")!)
+#Preview("Home") {
+    let container = PreviewFixtures.container()
+    return previewRoot(container) { NavigationStack { HomeView().newsDestinations() } }
+}
+
+#Preview("Article") {
+    let container = PreviewFixtures.container()
+    return previewRoot(container) { NavigationStack { ArticleScreen(id: ArticleID("fixture-1")) } }
 }
 
 #Preview("Root – adaptive") {
-    RootView()
-        .environment(PreviewFixtures.environment())
-        .environment(Router())
-        .hcgThemed()
+    let container = PreviewFixtures.container()
+    return previewRoot(container) { RootView() }
 }
 
-#Preview("Not connected") {
-    NavigationStack { HomeView() }
-        .environment(NewsAppEnvironment(
-            contentConfiguration: .awaitingSetup,
-            service: UnconfiguredNewsService(reasons: []),
-            bookmarks: BookmarkStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("p.json")),
-            connect: HCGConnectCoordinator(configuration: .awaitingSetup, browser: NoBrowser(), store: NoSessionStore(),
-                                           transport: NoTransport(), userAgent: "preview")))
-        .environment(Router())
-        .hcgThemed()
+#Preview("Newsroom") {
+    let container = PreviewFixtures.container()
+    return previewRoot(container) { NewsroomWorkspace() }
 }
 #endif

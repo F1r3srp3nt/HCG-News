@@ -2,16 +2,16 @@ import SwiftUI
 import NewsCore
 import NewsAppModel
 
-/// Chooses the layout from the horizontal size class, which already reflects
-/// iPad Split View / Slide Over / Stage Manager window widths:
-/// - compact (iPhone, narrow iPad windows): tab bar, one stack per tab;
-/// - regular (iPad full screen and wide windows): sidebar + detail.
+/// Chooses the layout from the horizontal size class, which reflects iPad Split
+/// View / Slide Over / Stage Manager window widths.
 struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(Router.self) private var router
     @Environment(NewsAppEnvironment.self) private var env
+    @Environment(AppContainer.self) private var container
 
     var body: some View {
+        @Bindable var router = router
         VStack(spacing: 0) {
             #if DEBUG
             if env.isUsingTestFixtures { TestFixtureBanner() }
@@ -22,13 +22,21 @@ struct RootView: View {
                 RegularRootView()
             }
         }
+        .onAppear { if sizeClass == .compact { router.isCompact = true } else { router.adoptRegular() } }
         .onChange(of: sizeClass) { _, newValue in
             if newValue == .compact { router.adoptCompact() } else { router.adoptRegular() }
         }
+        .fullScreenCover(isPresented: $router.isShowingNewsroom) {
+            NewsroomWorkspace()
+                .environment(env)
+                .environment(container)
+                .environment(router)
+                .hcgThemed()
+        }
+        .safeLinkHandling()
     }
 }
 
-/// Destination screens shared by both layouts.
 struct DestinationView: View {
     let destination: Destination
 
@@ -43,15 +51,16 @@ struct DestinationView: View {
 }
 
 extension View {
-    /// Registers article/section destinations on a navigation stack.
+    /// Registers reader and settings destinations on a navigation stack.
     func newsDestinations() -> some View {
         navigationDestination(for: Route.self) { route in
             switch route {
-            case .article(let id):
-                ArticleScreen(id: id)
-            case .section(let slug, let name):
-                SectionFeedView(slug: slug, name: name)
+            case .article(let id): ArticleScreen(id: id)
+            case .section(let slug, let name): SectionFeedView(slug: slug, name: name)
             }
+        }
+        .navigationDestination(for: SettingsRoute.self) { route in
+            SettingsDestinationView(route: route)
         }
     }
 }
@@ -60,6 +69,8 @@ extension View {
 
 struct CompactRootView: View {
     @Environment(Router.self) private var router
+    @Environment(NewsAppEnvironment.self) private var env
+    @Environment(AppContainer.self) private var container
 
     var body: some View {
         @Bindable var router = router
@@ -70,25 +81,30 @@ struct CompactRootView: View {
                         .newsDestinations()
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
-                                Button { router.isShowingSettings = true } label: {
-                                    Label("Settings", systemImage: "gearshape")
+                                Button { router.showSettings() } label: {
+                                    Label("Settings", systemImage: "person.crop.circle")
                                 }
                             }
                         }
                 }
                 .tabItem { Label(destination.title, systemImage: destination.systemImage) }
                 .tag(destination)
+                .badge(destination == .saved ? env.saved.interruptedIDs.count : 0)
             }
         }
         .sheet(isPresented: $router.isShowingSettings) {
-            NavigationStack {
+            NavigationStack(path: $router.settingsPath) {
                 SettingsView()
+                    .newsDestinations()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { router.isShowingSettings = false }
                         }
                     }
             }
+            .environment(env)
+            .environment(container)
+            .environment(router)
             .hcgThemed()
         }
     }
@@ -99,7 +115,6 @@ struct CompactRootView: View {
 struct RegularRootView: View {
     @Environment(Router.self) private var router
     @Environment(NewsAppEnvironment.self) private var env
-    @Environment(\.palette) private var palette
     @State private var columnVisibility = NavigationSplitViewVisibility.automatic
 
     var body: some View {
@@ -109,41 +124,48 @@ struct RegularRootView: View {
                 Section {
                     ForEach(Destination.allCases, id: \.self) { destination in
                         Label(destination.title, systemImage: destination.systemImage)
+                            .badge(destination == .saved ? env.saved.interruptedIDs.count : 0)
                             .tag(SidebarItem.destination(destination))
                     }
                 }
                 sidebarSections
                 Section {
-                    Label("Settings", systemImage: "gearshape")
+                    Label("Settings & Account", systemImage: "person.crop.circle")
                         .tag(SidebarItem.settings)
+                    Button {
+                        router.isShowingNewsroom = true
+                    } label: {
+                        Label("Newsroom", systemImage: "square.and.pencil")
+                    }
                 }
             }
             .navigationTitle("HCG News")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { BrandMark(height: 24) }
+                ToolbarItem(placement: .topBarLeading) {
+                    HCGMark(height: 22)
+                        .padding(.horizontal, 4)
+                        .background(Color.black, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                }
             }
             .task { await env.sections.loadIfNeeded() }
         } detail: {
             NavigationStack(path: $router.detailPath) {
-                detailRoot
-                    .newsDestinations()
+                detailRoot.newsDestinations()
             }
-            .id(router.sidebar)   // a new sidebar choice starts a fresh stack
+            .id(router.sidebar)
         }
         .navigationSplitViewStyle(.balanced)
     }
 
-    /// Choosing a different sidebar item starts that destination fresh. Layout
-    /// changes (rotation, Split View resizing) go through `Router.adoptRegular`
-    /// instead and keep the reader's place.
+    /// Choosing another sidebar item starts that destination fresh. Layout changes
+    /// (rotation, Split View resizing) go through `Router.adoptRegular` instead.
     private var sidebarSelection: Binding<SidebarItem?> {
-        Binding(
-            get: { router.sidebar },
-            set: { newValue in
-                guard newValue != router.sidebar else { return }
-                router.detailPath = NavigationPath()
-                router.sidebar = newValue
-            })
+        Binding(get: { router.sidebar }, set: { newValue in
+            guard newValue != router.sidebar else { return }
+            router.detailPath = NavigationPath()
+            router.sidebar = newValue
+            if case .destination(let d)? = newValue { router.tab = d }
+        })
     }
 
     @ViewBuilder
@@ -167,24 +189,20 @@ struct RegularRootView: View {
     @ViewBuilder
     private var detailRoot: some View {
         switch router.sidebar {
-        case .destination(let destination)?:
-            DestinationView(destination: destination)
-        case .section(let slug, let name)?:
-            SectionFeedView(slug: slug, name: name)
-        case .settings?:
-            SettingsView()
-        case nil:
-            DestinationView(destination: .home)
+        case .destination(let destination)?: DestinationView(destination: destination)
+        case .section(let slug, let name)?: SectionFeedView(slug: slug, name: name)
+        case .settings?: SettingsView()
+        case nil: DestinationView(destination: .home)
         }
     }
 }
 
 #if DEBUG
-/// Visible on every screen when UI-test fixtures are active, so fixture text
-/// can never be mistaken for reporting.
+/// Visible on every screen when development fixtures are active, so fixture
+/// text can never be mistaken for reporting.
 struct TestFixtureBanner: View {
     var body: some View {
-        Text("TEST FIXTURES — not live reporting")
+        Text("DEVELOPMENT FIXTURES — not live reporting")
             .font(.caption.weight(.bold))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
