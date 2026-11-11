@@ -1,0 +1,23 @@
+# Xcode / SwiftPM
+.DS_Store
+build/
+DerivedData/
+.build/
+.swiftpm/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Local HCG configuration: install approved values locally, never commit them
+# until the founder has approved the reviewed values for source control.
+HCGNews/HCGNews/Configuration/HCGNewsConfiguration.json
+
+# Never commit credentials
+*.p8
+*.p12
+*.mobileprovision
+.env
+.env.*

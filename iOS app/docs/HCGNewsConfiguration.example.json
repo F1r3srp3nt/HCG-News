@@ -1,0 +1,30 @@
+{
+  "content": {
+    "contractVersion": "1",
+    "environment": "beta",
+    "apiBaseURL": "https://<news-host>/<content-api-path>/",
+    "publicationURL": "https://news.hakmicapitalgroup.com",
+    "approvedByFounder": false
+  },
+  "connect": {
+    "contractVersion": "1",
+    "environment": "beta",
+    "issuer": "https://<identity-issuer>",
+    "authorizationEndpoint": "https://<identity-issuer>/<authorize>",
+    "tokenEndpoint": "https://<identity-issuer>/<token>",
+    "refreshEndpoint": "https://<identity-issuer>/<refresh>",
+    "refreshFormat": "<oauth-form | provider-json>",
+    "signOutEndpoint": "https://<identity-issuer>/<logout-or-revoke>",
+    "signOutFormat": "<provider-logout | rfc7009>",
+    "providerPublicKey": "<public anon key, only if central HCG confirms it is required>",
+    "appAccessEndpoint": "https://<hcg-host>/<app-access>",
+    "clientID": "<new public native client id for HCG News>",
+    "redirectURI": "com.hakmicapitalgroup.hcgnews:/oauth/callback",
+    "scopes": ["openid", "profile"],
+    "appIdentifier": "<HCG News id in the App Access registry>",
+    "newsroomPermission": "<central permission name>",
+    "newsroomURL": "https://<hcg-host>/<newsroom>",
+    "ephemeralBrowserSession": true,
+    "approvedByFounder": false
+  }
+}
