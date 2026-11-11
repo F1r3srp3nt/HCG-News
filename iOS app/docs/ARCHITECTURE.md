@@ -4,6 +4,8 @@ Milestone 1 (development build, **not released**).
 
 ## 1. Layout
 
+Everything below is inside the repository's `iOS app/` folder (alongside `docs/`, `README.md` and `.gitignore`).
+
 ```
 HCGNews/
   HCGNews.xcodeproj           iOS app project: app target + UI-test target, shared scheme "HCGNews"

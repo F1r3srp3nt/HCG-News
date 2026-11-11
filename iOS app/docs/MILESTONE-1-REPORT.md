@@ -8,6 +8,8 @@ A complete native reader exists as source: Home with explicit-flag breaking news
 
 ## 2. Where things are
 
+All paths are inside the repository's `iOS app/` folder.
+
 | | Path |
 |---|---|
 | Xcode project (app + UI tests, shared scheme `HCGNews`) | `HCGNews/HCGNews.xcodeproj` |

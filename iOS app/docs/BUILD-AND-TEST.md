@@ -20,6 +20,12 @@ git clone https://github.com/F1r3srp3nt/HCG-News.git
 cd HCG-News && git checkout claude/bold-gauss-dp6yro
 ```
 
+Everything for the iOS app is in the `iOS app` folder. **Run all commands below from that folder:**
+
+```bash
+cd "iOS app"
+```
+
 ```bash
 open HCGNews/HCGNews.xcodeproj
 ```

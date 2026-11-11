@@ -11,7 +11,7 @@ Labels: **CONFIRMED** = verified in existing HCG source (not live-tested); **PRO
 |---|---|---|
 | Configuration loader | `HCGNewsKit/Sources/HCGConnect/ConnectConfiguration.swift` | No defaults. It rejects secrets (`*secret*`, `*password*`, `service_role` keys), non-HTTPS endpoints, endpoints off the issuer or HCG hosts, an App Access endpoint off HCG hosts, a redirect that doesn't use this app's own scheme, and anything without `approvedByFounder: true`. |
 | PKCE | `PKCE.swift` | S256, verifier from the system CSPRNG, kept in memory only, sent only to the token endpoint. Tested against the RFC 7636 Appendix B vector. |
-| System-browser sign-in | `HCGNews/Platform/SystemBrowserAuthenticator.swift` | `ASWebAuthenticationSession`. Ephemeral session by default, configurable. Never an embedded web view. |
+| System-browser sign-in | `HCGNews/HCGNews/Platform/SystemBrowserAuthenticator.swift` | `ASWebAuthenticationSession`. Ephemeral session by default, configurable. Never an embedded web view. |
 | Callback validation | `AuthorizationFlow.swift` | Exact redirect scheme, host and path. `state` must match. `access_denied` and provider errors are mapped. The code is discarded on any mismatch. |
 | Session coordinator | `HCGConnectCoordinator.swift` | Token exchange, single-flight refresh, App Access check, revocation handling and sign-out reporting. |
 | Keychain store | `KeychainSessionStore.swift` | One generic-password item, service `com.hakmicapitalgroup.hcgnews.connect`, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, not synchronisable. |
@@ -77,7 +77,7 @@ The app rejects a decision for another `appIdentifier` or another `subject`. `re
 
 ## 5. The configuration file
 
-Install it as `HCGNews/HCGNews/Configuration/HCGNewsConfiguration.json`. Xcode bundles that folder automatically. The path is git-ignored so that unapproved values are never committed. A template with placeholders is in [`HCGNewsConfiguration.example.json`](HCGNewsConfiguration.example.json). Both sections are independent: content can be connected before sign-in, and the other way round.
+Install it as `iOS app/HCGNews/HCGNews/Configuration/HCGNewsConfiguration.json`. Xcode bundles that folder automatically. The path is git-ignored so that unapproved values are never committed. A template with placeholders is in [`HCGNewsConfiguration.example.json`](HCGNewsConfiguration.example.json). Both sections are independent: content can be connected before sign-in, and the other way round.
 
 | Field | Required | Notes |
 |---|---|---|
@@ -145,4 +145,4 @@ Not requested, and not done by this project: changing central security policy, R
 > 2. A proposed **App Access read endpoint**: `GET …?app=hcg-news-ios` with a bearer token. It returns `{appIdentifier, subject, organizationID, status (granted|denied|revoked|unlicensed|suspended), permissions[], validUntil, reason}`, enforced server-side, with no inference from email or display name.
 > 3. Permission names for HCG News, including one that allows showing a newsroom entry point (proposed `news.newsroom.open`), plus the newsroom URL. Confirm that the newsroom enforces access itself.
 > 4. Logout semantics (local or global scope), access-token lifetime, refresh rotation and reuse detection, and how revocation surfaces.
-> 5. Filled-in values, or "TBD", for every `connect.*` field in HCG News' `docs/HCGNewsConfiguration.example.json`, kept pending until the founder sets `approvedByFounder`.
+> 5. Filled-in values, or "TBD", for every `connect.*` field in HCG News' `iOS app/docs/HCGNewsConfiguration.example.json`, kept pending until the founder sets `approvedByFounder`.
