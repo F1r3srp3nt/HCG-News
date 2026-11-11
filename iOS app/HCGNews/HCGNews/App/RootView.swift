@@ -92,7 +92,7 @@ struct CompactRootView: View {
                 .badge(destination == .saved ? env.saved.interruptedIDs.count : 0)
             }
         }
-        .sheet(isPresented: $router.isShowingSettings) {
+        .sheet(isPresented: $router.isShowingSettings, onDismiss: { router.settingsDidDismiss() }) {
             NavigationStack(path: $router.settingsPath) {
                 SettingsView()
                     .newsDestinations()

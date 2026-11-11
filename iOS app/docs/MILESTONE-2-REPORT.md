@@ -12,7 +12,7 @@ All five stages were implemented on the app side:
 - account and newsroom drafts;
 - capability-gated remote editorial and admin actions, with the integration handoff.
 
-Logic lives in the Foundation-only package, which **builds with 0 warnings and passes 134 tests** under Swift 6.1 on Linux. The SwiftUI layer (about 3,000 lines) **has not been compiled**: there is no Xcode or Apple SDK in this environment. It passes a syntax check, and an independent read-through looked for compile errors. Nothing loads live content yet. No supported content API or newsroom API exists (the site inspection confirmed this), and central HCG hasn't registered a native client. Each of those is now one configuration import away, once the backend work in [BACKEND-REQUIREMENTS.md](BACKEND-REQUIREMENTS.md) is done.
+Logic lives in the Foundation-only package, which **builds with 0 warnings and passes 135 tests** under Swift 6.1 on Linux. The SwiftUI layer (about 3,000 lines) **has not been compiled**: there is no Xcode or Apple SDK in this environment. It passes a syntax check, and an independent read-through looked for compile errors. Nothing loads live content yet. No supported content API or newsroom API exists (the site inspection confirmed this), and central HCG hasn't registered a native client. Each of those is now one configuration import away, once the backend work in [BACKEND-REQUIREMENTS.md](BACKEND-REQUIREMENTS.md) is done.
 
 ## 2. Walkthrough
 
@@ -38,7 +38,7 @@ Logic lives in the Foundation-only package, which **builds with 0 warnings and p
 | What | Result |
 |---|---|
 | `swift build` of HCGNewsKit, Swift 6.1.3 Linux, Swift 6 language mode, clean build | **Pass, 0 warnings** |
-| `swift test` of HCGNewsKit (fixtures, fake transports, temp folders) | **134 tests, 0 failures**: NewsCore 65, HCGConnect 27, Newsroom 17, NewsAppModel 25 |
+| `swift test` of HCGNewsKit (fixtures, fake transports, temp folders) | **135 tests, 0 failures**: NewsCore 65, HCGConnect 27, Newsroom 17, NewsAppModel 26 |
 | Real defects found by these tests during the work, then fixed | Link markup with parentheses in the URL left a stray `)` in the text; an empty search query could hide the "not connected" state (0.1.0) |
 | `swiftc -parse` of every app and UI-test file | Pass (syntax only) |
 | `project.pbxproj` with an independent parser (`pbxproj` 4.2.1) | Pass: 37 objects, all references resolve, Newsroom linked to the app target |
@@ -97,7 +97,21 @@ See [BACKEND-REQUIREMENTS.md](BACKEND-REQUIREMENTS.md). In short:
 
 ## 6. Independent compile review
 
-A separate read-only review of the SwiftUI layer against the package API was run before the final commit. Its findings and the fixes applied are listed in the pull request description and the final commit message.
+A separate read-only review checked the SwiftUI layer against the package's public API and the iOS 17 SDK. It found **one certain compile error**, and seven runtime, UX or robustness issues. All eight were fixed:
+
+1. **Compile error.** `ArticleSource` was declared in two imported modules (NewsCore's source-citation struct and NewsAppModel's live/stored enum). The enum was renamed `ArticleOrigin`, and the fixtures now name `NewsCore.ArticleSource` explicitly.
+2. **Editor marked itself dirty after newsroom actions.** After a newsroom action, the editor showed "Unsaved changes" and later refused the next action. Added `DraftEditorModel.reload(from:)` and a test for it.
+3. **Help text rendered as Markdown.** The editor's markup help showed formatted text instead of the syntax. It now uses `Text(verbatim:)`.
+4. **UI test used the wrong element type.** The draft headline is a vertical-axis field, which is exposed as a text view. It now has an accessibility identifier, and the test queries that.
+5. **Newsroom might not open from Settings on iPhone.** It could be dropped while the Settings sheet was dismissing. It now opens after the sheet's `onDismiss`.
+6. **Sign-in callback assumed the main thread.** The callback no longer assumes it; it hops explicitly with `Task { @MainActor … }`.
+7. **Property named `toolbar`.** It overlapped the modifier name and was renamed `toolbarContent`.
+
+The review also confirmed:
+- every package API call, label, access level and `await`;
+- switch exhaustiveness over every package enum;
+- the iOS 17 API usage;
+- the Release build's exclusion of fixtures.
 
 ## 7. Next steps
 

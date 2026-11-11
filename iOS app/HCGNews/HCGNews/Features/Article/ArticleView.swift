@@ -229,7 +229,7 @@ struct ArticleView: View {
 
 /// Says plainly when the reader is looking at a stored copy rather than the live article.
 struct SourceBanner: View {
-    let source: ArticleSource
+    let source: ArticleOrigin
     let updateAvailable: Bool
     let canUpdate: Bool
     let update: () -> Void

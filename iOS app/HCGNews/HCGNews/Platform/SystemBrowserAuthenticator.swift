@@ -24,17 +24,18 @@ private final class Runner: NSObject, ASWebAuthenticationPresentationContextProv
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
             self.continuation = continuation
             let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { [weak self] callbackURL, error in
-                MainActor.assumeIsolated {
-                    if let callbackURL {
-                        self?.finish(.success(callbackURL))
-                    } else if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
-                        self?.finish(.failure(BrowserAuthenticationError.cancelled))
-                    } else if let error {
-                        self?.finish(.failure(BrowserAuthenticationError.unavailable((error as NSError).domain)))
-                    } else {
-                        self?.finish(.failure(BrowserAuthenticationError.cancelled))
-                    }
+                let result: Result<URL, Error>
+                if let callbackURL {
+                    result = .success(callbackURL)
+                } else if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
+                    result = .failure(BrowserAuthenticationError.cancelled)
+                } else if let error {
+                    result = .failure(BrowserAuthenticationError.unavailable((error as NSError).domain))
+                } else {
+                    result = .failure(BrowserAuthenticationError.cancelled)
                 }
+                // The thread of this callback is not documented: hop to the main actor.
+                Task { @MainActor in self?.finish(result) }
             }
             session.presentationContextProvider = self
             session.prefersEphemeralWebBrowserSession = ephemeral

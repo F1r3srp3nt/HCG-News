@@ -25,8 +25,7 @@ struct SettingsView: View {
             }
             Section("Newsroom") {
                 Button {
-                    router.isShowingSettings = false
-                    router.isShowingNewsroom = true
+                    router.openNewsroomFromSettings()
                 } label: {
                     Label("Open Newsroom", systemImage: "square.and.pencil")
                 }

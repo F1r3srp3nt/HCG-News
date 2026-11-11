@@ -128,7 +128,7 @@ enum PreviewFixtures {
             .divider,
             .paragraph(InlineText(plain: "Closing fixture paragraph.")),
         ],
-        sources: [ArticleSource(title: "Fixture source document", url: URL(string: "https://example.org/fixture-report"), publisher: "Example Publisher")],
+        sources: [NewsCore.ArticleSource(title: "Fixture source document", url: URL(string: "https://example.org/fixture-report"), publisher: "Example Publisher")],
         corrections: number == 1 ? [ArticleCorrection(id: "fc1", text: "Fixture correction: a date in this placeholder article was corrected.", issuedAt: base)] : [],
         sponsor: s.editorialType == .sponsored ? SponsorNotice(sponsorName: "Fixture Partner", text: nil, url: nil) : nil,
         related: number == 1 ? [summary(4), summary(5)] : [])

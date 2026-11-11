@@ -61,6 +61,9 @@ final class Router {
     var isShowingSettings = false
     var settingsPath = NavigationPath()
     var isShowingNewsroom = false
+    /// Set while Settings (a sheet on iPhone) closes, so the Newsroom cover opens
+    /// only after the sheet has finished dismissing.
+    var openNewsroomAfterSettings = false
     /// Incremented to ask Search to focus its field (⌘F).
     var searchFocusRequest = 0
     var isCompact = true
@@ -105,6 +108,24 @@ final class Router {
     }
 
     func showAdvancedSettings() { showSettings(.advanced) }
+
+    /// Opens the Newsroom from Settings without presenting over a dismissing sheet.
+    func openNewsroomFromSettings() {
+        if isCompact && isShowingSettings {
+            openNewsroomAfterSettings = true
+            isShowingSettings = false
+        } else {
+            isShowingNewsroom = true
+        }
+    }
+
+    /// Called from the Settings sheet's onDismiss.
+    func settingsDidDismiss() {
+        if openNewsroomAfterSettings {
+            openNewsroomAfterSettings = false
+            isShowingNewsroom = true
+        }
+    }
 
     /// Moves state from the tab layout to the sidebar layout.
     func adoptRegular() {

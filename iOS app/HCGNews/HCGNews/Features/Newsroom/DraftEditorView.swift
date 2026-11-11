@@ -53,6 +53,7 @@ struct DraftEditorView: View {
             }
             Section("Headline and introduction") {
                 TextField("Headline", text: $editor.draft.headline, axis: .vertical)
+                    .accessibilityIdentifier("draftHeadline")
                     .font(Typography.headline(.title3))
                 TextField("Introduction (standfirst)", text: $editor.draft.standfirst, axis: .vertical)
             }
@@ -65,7 +66,7 @@ struct DraftEditorView: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(editor.draft.displayTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { toolbar }
+        .toolbar { toolbarContent }
         .sheet(isPresented: $showingPreview) { previewSheet }
         .sheet(isPresented: $showingVersions) { versionsSheet }
         .sheet(item: $pendingAction) { action in actionReviewSheet(action) }
@@ -192,7 +193,7 @@ struct DraftEditorView: View {
         } header: {
             Text("Article body")
         } footer: {
-            Text("Use **bold**, *italic* and [link text](https://…) inside text. Long-press a block to move or delete it.")
+            Text(verbatim: "Use **bold**, *italic* and [link text](https://…) inside text. Long-press a block to move or delete it.")
         }
     }
 
@@ -265,7 +266,7 @@ struct DraftEditorView: View {
     // MARK: Toolbar
 
     @ToolbarContentBuilder
-    private var toolbar: some ToolbarContent {
+    private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             Button { Task { await editor.save() } } label: { Label("Save Locally", systemImage: "square.and.arrow.down") }
                 .keyboardShortcut("s", modifiers: .command)
@@ -378,7 +379,7 @@ struct DraftEditorView: View {
 
     private func refresh() async {
         if let fresh = await env.newsroom.store.draft(editor.draft.id), !editor.isDirty {
-            editor.draft = fresh
+            editor.reload(from: fresh)
         }
     }
 

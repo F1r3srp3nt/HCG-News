@@ -18,7 +18,7 @@ The app consumes the publication's content and HCG's central identity. It has no
 | | |
 |---|---|
 | Project | [`HCGNews/HCGNews.xcodeproj`](HCGNews/HCGNews.xcodeproj) (Xcode 16+, iOS 17+) |
-| Core package | [`HCGNews/HCGNewsKit`](HCGNews/HCGNewsKit). Foundation only; 134 tests, passing on Linux (Swift 6.1). |
+| Core package | [`HCGNews/HCGNewsKit`](HCGNews/HCGNewsKit). Foundation only; 135 tests, passing on Linux (Swift 6.1). |
 | Build and test | [docs/BUILD-AND-TEST.md](docs/BUILD-AND-TEST.md) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | What was found, and what's missing | [docs/INTEGRATION-DISCOVERY.md](docs/INTEGRATION-DISCOVERY.md) |

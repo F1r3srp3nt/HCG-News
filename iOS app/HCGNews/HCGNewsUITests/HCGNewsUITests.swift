@@ -180,7 +180,8 @@ final class HCGNewsUITests: XCTestCase {
         app.buttons["Open Newsroom"].tap()
         XCTAssertTrue(element(containing: "Local drafting only", in: app).waitForExistence(timeout: 5))
         app.buttons["New Draft"].firstMatch.tap()
-        let headline = app.textFields["Headline"].firstMatch
+        // A vertical-axis TextField is exposed as a text view.
+        let headline = app.descendants(matching: .any).matching(identifier: "draftHeadline").firstMatch
         XCTAssertTrue(headline.waitForExistence(timeout: 5))
         headline.tap()
         headline.typeText("UI test local draft")

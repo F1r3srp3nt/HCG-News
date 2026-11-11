@@ -50,7 +50,7 @@ Version numbers change only on purpose and are recorded here: `MARKETING_VERSION
 - Development fixtures moved to their own storage folder.
 
 **Tests**
-- 134 package tests on Linux (Swift 6.1), and 14 UI tests (not yet run).
+- 135 package tests on Linux (Swift 6.1), and 14 UI tests (not yet run).
 
 ## 0.1.0 (1) — 3 November 2026 — development build
 

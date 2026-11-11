@@ -519,7 +519,7 @@ public final class SavedModel {
 // MARK: - Article
 
 /// Where the article on screen came from.
-public enum ArticleSource: Equatable, Sendable {
+public enum ArticleOrigin: Equatable, Sendable {
     /// Fetched from the publication just now.
     case live
     /// The copy stored on this device, shown because the live request failed or the
@@ -529,7 +529,7 @@ public enum ArticleSource: Equatable, Sendable {
 
 public struct ArticlePresentation: Equatable, Sendable {
     public let article: Article
-    public let source: ArticleSource
+    public let source: ArticleOrigin
     /// True when the publication now has a newer version than the stored download.
     public let downloadUpdateAvailable: Bool
 }

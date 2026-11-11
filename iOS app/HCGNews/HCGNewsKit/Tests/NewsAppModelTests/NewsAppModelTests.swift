@@ -519,6 +519,25 @@ final class NewsroomModelTests: XCTestCase {
         XCTAssertTrue(message.contains("Save to the newsroom first"))
     }
 
+    @MainActor
+    func testEditorReloadAfterServerActionDoesNotMarkDirty() async throws {
+        let store = DraftStore(root: root)
+        var draft = try await store.create()
+        draft.headline = "H"
+        draft = try await store.save(draft)
+        let editor = DraftEditorModel(draft: draft, store: store, autosaveDelay: .milliseconds(10))
+        let linked = try await store.link(draft.id, to: ServerLink(serverDraftID: "s", serverRevision: "2", remoteStatus: "draft",
+                                                                  lastSyncedAt: Date(), environment: "t"))
+        editor.reload(from: linked)
+        XCTAssertFalse(editor.isDirty)
+        try await Task.sleep(for: .milliseconds(50))
+        let pending = await store.pendingRecoveries()
+        XCTAssertTrue(pending.isEmpty, "a reload is not an edit, so nothing is autosaved")
+        XCTAssertFalse(editor.draft.hasUnsyncedChanges)
+        editor.draft.headline = "Edited"
+        XCTAssertTrue(editor.isDirty)
+    }
+
     struct StaticCapsService: NewsroomService {
         let caps: NewsroomCapabilities
         let transport: FakeTransport

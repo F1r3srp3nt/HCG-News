@@ -264,8 +264,9 @@ extension Draft {
 @Observable
 public final class DraftEditorModel {
     public var draft: Draft {
-        didSet { if draft != oldValue { isDirty = true; scheduleAutosave() } }
+        didSet { if draft != oldValue, !isReloading { isDirty = true; scheduleAutosave() } }
     }
+    @ObservationIgnored private var isReloading = false
     public private(set) var isDirty = false
     public private(set) var lastSavedAt: Date?
     public private(set) var snapshots: [DraftSnapshot] = []
@@ -291,6 +292,17 @@ public final class DraftEditorModel {
             guard !Task.isCancelled else { return }
             await store.autosave(snapshot)
         }
+    }
+
+    /// Replaces the edited draft with a version just read from the store (e.g. after a
+    /// newsroom action updated its link). Not an edit: nothing becomes dirty or autosaved.
+    public func reload(from stored: Draft) {
+        autosaveTask?.cancel()
+        isReloading = true
+        draft = stored
+        isReloading = false
+        isDirty = false
+        lastSavedAt = stored.updatedAt
     }
 
     /// Writes the autosave immediately (e.g. when the app moves to the background).
