@@ -323,6 +323,7 @@ struct BlockBuilder {
     // Inline style state.
     private var boldDepth = 0
     private var italicDepth = 0
+    private var underlineDepth = 0
     private var codeDepth = 0
     private var linkStack: [URL?] = []
 
@@ -484,6 +485,8 @@ struct BlockBuilder {
             boldDepth += 1
         case "em", "i":
             italicDepth += 1
+        case "u":
+            underlineDepth += 1
         case "code", "kbd", "samp":
             codeDepth += 1
         case "span", "small":
@@ -570,6 +573,8 @@ struct BlockBuilder {
             boldDepth = max(0, boldDepth - 1)
         case "em", "i":
             italicDepth = max(0, italicDepth - 1)
+        case "u":
+            underlineDepth = max(0, underlineDepth - 1)
         case "code", "kbd", "samp":
             codeDepth = max(0, codeDepth - 1)
         case "span", "small":
@@ -585,7 +590,7 @@ struct BlockBuilder {
 
     private func styled(_ text: String) -> InlineRun {
         InlineRun(text, bold: boldDepth > 0, italic: italicDepth > 0, code: codeDepth > 0,
-                  link: linkStack.last(where: { $0 != nil }) ?? nil)
+                  link: linkStack.last(where: { $0 != nil }) ?? nil, underline: underlineDepth > 0)
     }
 
     private mutating func appendText(_ raw: String) {

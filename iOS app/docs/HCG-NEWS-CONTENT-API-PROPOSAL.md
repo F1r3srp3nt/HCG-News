@@ -24,12 +24,12 @@ The app only calls this API after an approved configuration names its base URL (
 
 | Method & path | Purpose | Response |
 |---|---|---|
-| `GET meta` | Contract version and capabilities. Called first. | `{"contractVersion":"1","capabilities":{"search":true}}` |
+| `GET meta` | Contract version and capabilities. Called first, and again by "Check connection". | `{"contractVersion":"1","capabilities":{"search":true,"searchFilters":["section","type"],"fullContent":true}}` |
 | `GET home` | Home screen as decided by editors | `{"featured":[Summary],"breaking":[Summary],"latest":{"items":[Summary],"nextCursor":"…"\|null}}` |
 | `GET sections` | Section source of truth, including hierarchy | `{"sections":[Section]}` |
 | `GET articles?section=<slug>&cursor=<c>` | Latest published, optionally in one section | `{"items":[Summary],"nextCursor":"…"\|null}` |
 | `GET articles/{id}` | Full article by stable id | `Article` |
-| `GET search?q=<text>&cursor=<c>` | Full-text search (only if `capabilities.search`) | `{"items":[Summary],"nextCursor":…}` |
+| `GET search?q=<text>&section=<slug>&type=<type>&cursor=<c>` | Full-text search (only if `capabilities.search`). `section` and `type` are sent only if listed in `searchFilters`; otherwise the app filters the returned results itself and says so. | `{"items":[Summary],"nextCursor":…}` |
 
 If `contractVersion` differs from the version the app was configured for, the app stops and shows "This version can't read the publication". It does not guess.
 
@@ -57,7 +57,8 @@ If `contractVersion` differs from the version the app was configured for, the ap
   "isFeatured": false,
   "breaking": { "active": true, "expiresAt": "…", "label": "Breaking" },  // optional; explicit editorial flag
   "access": "public" | "restricted",                          // absent = public
-  "status": "published"                                       // optional; anything else is hidden
+  "status": "published",                                      // optional; anything else is hidden
+  "revision": "17"                                            // optional; changes whenever the content changes (offline update detection)
 }
 
 // Author — `id` is the verified author identity, not a display name
@@ -68,7 +69,12 @@ If `contractVersion` differs from the version the app was configured for, the ap
 { …Summary…,
   "body": { "format": "blocks", "blocks": [Block] }    // preferred
        // or { "format": "html", "html": "<p>…</p>" }  // sanitised natively by the app
-  "sources": [ { "title": "…", "url": "https://…", "publisher": "…" } ] }
+       // or { "format": "summary" }                    // only a summary may be shown: the app links to the canonical URL
+  "sources": [ { "title": "…", "url": "https://…", "publisher": "…" } ],
+  "corrections": [ { "id": "…", "text": "…", "issuedAt": "…" } ],          // optional; shown prominently
+  "sponsor": { "sponsorName": "…", "text": "…", "url": "https://…" },     // optional; for sponsored content
+  "audio": { "url": "https://…", "durationSeconds": 312, "title": "…", "narration": "Read by the author" },  // optional, HTTPS only
+  "related": [Summary] }                                                     // optional; chosen by editors, never computed by the app
 ```
 
 ### Blocks

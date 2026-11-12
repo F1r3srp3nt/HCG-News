@@ -218,7 +218,11 @@ public actor HCGConnectCoordinator {
                 return
             }
             var components = URLComponents(url: configuration.appAccessEndpoint, resolvingAgainstBaseURL: false)!
-            components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "app", value: configuration.appIdentifier)]
+            var items = [URLQueryItem(name: "app", value: configuration.appIdentifier)]
+            if let organization = session?.selectedOrganizationID {
+                items.append(URLQueryItem(name: "organization", value: organization))
+            }
+            components.queryItems = (components.queryItems ?? []) + items
             var request = URLRequest(url: components.url!)
             request.httpMethod = "GET"
             request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -280,6 +284,52 @@ public actor HCGConnectCoordinator {
         }
     }
 
+    // MARK: Organisation, reachability, local reset
+
+    /// Chooses an organisation HCG offered, then re-checks access for it. HCG decides
+    /// what the account may do in that organisation.
+    public func selectOrganization(_ id: String?) async {
+        guard var current = session else { return }
+        current.selectedOrganizationID = id
+        try? store.save(current)
+        session = current
+        await checkAppAccess()
+    }
+
+    public enum Reachability: Equatable, Sendable {
+        case notConfigured
+        case reachable(statusCode: Int)
+        case unreachable(String)
+    }
+
+    /// Checks that the sign-in service answers at all (any HTTP response counts).
+    /// This does not prove sign-in works; only a successful sign-in and App Access check do.
+    public func checkReachability() async -> Reachability {
+        guard let configuration else { return .notConfigured }
+        var request = URLRequest(url: configuration.issuer)
+        request.httpMethod = "GET"
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        if let key = configuration.providerPublicKey { request.setValue(key, forHTTPHeaderField: "apikey") }
+        do {
+            let (_, response) = try await transport.send(request)
+            return .reachable(statusCode: response.statusCode)
+        } catch TransportError.offline {
+            return .unreachable("You're offline or the sign-in service can't be reached.")
+        } catch {
+            return .unreachable("The sign-in service did not answer.")
+        }
+    }
+
+    /// Removes the session from this device without contacting any server.
+    /// Used when the identity configuration changes: the old endpoints may no longer apply.
+    public func forgetLocalSession() {
+        try? store.delete()
+        session = nil
+        authentication = configuration == nil ? .unavailable : .signedOut
+        access = .notChecked
+        lastEvent = nil
+    }
+
     // MARK: Sign-out
 
     /// Removes the session from this device and asks the central service to end it
@@ -326,13 +376,18 @@ public actor HCGConnectCoordinator {
     }
 
     private func makeSession(_ tokens: TokenResponse, previous: ConnectSession?, configuration: ConnectConfiguration) -> ConnectSession {
-        ConnectSession(
+        var session = ConnectSession(
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken ?? previous?.refreshToken,
             expiresAt: tokens.expiry(now: now()),
             subject: UnverifiedClaims.subject(tokens.accessToken) ?? previous?.subject,
             displayName: UnverifiedClaims.displayName(tokens.accessToken) ?? previous?.displayName,
             environment: configuration.environment)
+        // Keep the organisation choice only for the same subject.
+        if let previous, previous.subject == session.subject {
+            session.selectedOrganizationID = previous.selectedOrganizationID
+        }
+        return session
     }
 
     private func exchange(code: String, verifier: String, configuration: ConnectConfiguration) async throws -> TokenResponse {

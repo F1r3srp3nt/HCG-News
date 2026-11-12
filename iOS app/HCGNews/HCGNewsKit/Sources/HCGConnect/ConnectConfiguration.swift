@@ -44,8 +44,22 @@ public struct ConnectConfiguration: Equatable, Sendable {
     public let newsroomURL: URL?
     /// Use an ephemeral browser session (no shared Safari cookies). Default true.
     public let ephemeralBrowserSession: Bool
+    /// Central HCG management destinations (e.g. ERP pages) shown in Administration.
+    /// HTTPS HCG hosts only. Opening them never grants anything; HCG checks access there.
+    public let managementLinks: [ManagementLink]
 
     public var callbackScheme: String { redirectURI.scheme ?? "" }
+}
+
+public struct ManagementLink: Equatable, Sendable, Identifiable {
+    public let title: String
+    public let url: URL
+    public var id: String { url.absoluteString }
+
+    public init(title: String, url: URL) {
+        self.title = title
+        self.url = url
+    }
 }
 
 public enum ConnectConfigurationState: Equatable, Sendable {
@@ -89,6 +103,11 @@ public enum ConnectConfigurationLoader {
             let newsroomPermission: String?
             let newsroomURL: String?
             let ephemeralBrowserSession: Bool?
+            let managementLinks: [Link]?
+        }
+        struct Link: Decodable {
+            let title: String?
+            let url: String?
         }
         let connect: Connect?
     }
@@ -201,6 +220,15 @@ public enum ConnectConfigurationLoader {
         if c.newsroomPermission != nil, newsroomURL == nil {
             problems.append("connect.newsroomURL is required when newsroomPermission is set.")
         }
+        var links: [ManagementLink] = []
+        for (index, link) in (c.managementLinks ?? []).enumerated() {
+            guard let title = link.title, !title.isEmpty, let raw = link.url, let url = URL(string: raw),
+                  HCGHostPolicy.isTrustedHCGURL(url) else {
+                problems.append("connect.managementLinks[\(index)] needs a title and an HTTPS URL on an HCG host.")
+                continue
+            }
+            links.append(ManagementLink(title: title, url: url))
+        }
         if c.approvedByFounder != true {
             problems.append("The configuration has not been approved by the founder (approvedByFounder is not true).")
         }
@@ -216,6 +244,7 @@ public enum ConnectConfigurationLoader {
             appAccessEndpoint: appAccess, clientID: clientID, redirectURI: redirect, scopes: scopes,
             appIdentifier: appIdentifier, providerPublicKey: publicKey,
             newsroomPermission: text(c.newsroomPermission, "newsroomPermission", required: false),
-            newsroomURL: newsroomURL, ephemeralBrowserSession: c.ephemeralBrowserSession ?? true))
+            newsroomURL: newsroomURL, ephemeralBrowserSession: c.ephemeralBrowserSession ?? true,
+            managementLinks: links))
     }
 }

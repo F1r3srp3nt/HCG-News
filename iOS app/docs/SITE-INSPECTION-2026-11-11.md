@@ -1,6 +1,6 @@
 # What news.hakmicapitalgroup.com serves — inspection, 11 November 2026
 
-**Purpose:** gather evidence for the content contract. **Nothing here is an API the app uses.** The app still shows "Live publication not connected" until the publication owner confirms a supported contract (see [INTEGRATION-DISCOVERY.md](INTEGRATION-DISCOVERY.md) §5).
+**Purpose:** gather evidence for the content contract. **Nothing here is an API the app uses.** The app still shows "Publication not connected" until the publication owner confirms a supported contract (see [INTEGRATION-DISCOVERY.md](INTEGRATION-DISCOVERY.md) §5).
 
 **Method:**
 - Anonymous HTTPS GETs from a cloud session, with the user agent `HCGNewsIntegrationCheck/0.1`.

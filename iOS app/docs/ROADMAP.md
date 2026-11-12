@@ -1,14 +1,15 @@
-# HCG News apps — later milestones
+# HCG News apps — roadmap
 
-None of these are in Milestone 1. The app has no placeholder screens or controls for them. Each needs a founder decision and, where noted, a verified central contract first.
+Done in 0.2.0 (on the app side, against fixtures): local offline downloads, local newsroom drafting, configuration import and the capability-gated newsroom client. What remains needs backend work or a founder decision. The app has no placeholder controls for any of it; where something appears, it states that it's unavailable and why.
 
 | Milestone | Scope | Prerequisites |
 |---|---|---|
-| **M1.1 Live connection** | Install the approved content configuration; adapt the decoder if the real contract differs from the proposal; device testing; real text-heavy artwork checks | Content API (or confirmed existing contract) from the publication owner; HCG host access for testing |
-| **M1.2 HCG Connect live** | Register the HCG News native client centrally; App Access endpoint; run the acceptance tests in the handoff (§8) | Central HCG decisions in [HCG-MAIN-CONFIGURATION-HANDOFF.md](HCG-MAIN-CONFIGURATION-HANDOFF.md) §7 |
-| **M2 Notifications** | Opt-in push notifications; topic preferences (e.g. per section, breaking only); no prompt at first launch | A push service owned by HCG; an editorial rule for what triggers a notification; APNs key held server-side only; privacy review |
-| **M3 Offline reading** | Explicit "Download for offline" per article or section, with storage limits and expiry; honours later corrections and unpublishing | Content API support for conditional fetches; editorial policy on corrected or unpublished articles stored on devices |
-| **M4 Bookmark sync** | Account-based sync of saved articles across devices | A verified central contract, owned by HCG, for per-user data; account-linking and conflict rules; local bookmarks stay usable when signed out |
-| **M5 Native newsroom** | Native editing and publishing for authorised staff | Newsroom write API with server-side permission checks, audit log, draft/review/publish workflow; App Access permissions; security review. Until then, staff use the existing web newsroom through the permission-gated link. |
-| **M6 Additional platforms** | Mac (native or Catalyst), Apple Watch headlines, widgets, Android/web parity | Product decision per platform; shared core package already Foundation-only |
-| **Release** | App Store metadata, privacy nutrition labels, export compliance answers, TestFlight, App Review | Founder approval. Not to be done without explicit instruction. |
+| **Live connection** | Import the approved publication configuration. Adapt `WireFormat.swift` if the real contract differs from the proposal. Run the live items of the acceptance checklist. | Content API ([BACKEND-REQUIREMENTS.md](BACKEND-REQUIREMENTS.md) §A) |
+| **HCG Connect live** | Native client registration and the App Access endpoint; account and organisation checks | §C |
+| **Newsroom live** | Server drafts, submission, review, scheduling, publishing, corrections, unpublishing | Newsroom API (§B), central permission (§C3) |
+| **Notifications** | APNs registration, opt-in prompt, topic delivery (preferences already stored locally) | A notification service; an editorial trigger rule; the Push capability (see PACKAGING.md) |
+| **Restricted offline** | Time-limited offline copies of restricted articles | An agreed access and retention policy |
+| **Saved-article sync** | Sync across devices | A central per-user storage contract |
+| **Native administration** | Sections, authors and media management in the app | Management endpoints (§B5); until then, central management links |
+| **Additional platforms** | Mac, widgets, Watch, Android/web parity | A product decision per platform |
+| **Release** | App Store metadata, privacy labels, export compliance, TestFlight, App Review | Founder approval. Not to be done without explicit instruction. |

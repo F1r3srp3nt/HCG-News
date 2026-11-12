@@ -264,12 +264,19 @@ public struct ArticleSummary: Hashable, Codable, Sendable, Identifiable {
     public let access: AccessLevel
     /// Publication status, when the backend includes it. Only "published" is shown.
     public let status: String?
+    /// Opaque content revision from the backend (e.g. an ETag or revision number).
+    /// Used to detect when a downloaded copy is out of date. Never invented.
+    public let revision: String?
+    /// The publication marks this as demonstration content ("Demo content" on the web).
+    /// Shown with that label and never used as breaking news.
+    public let isDemo: Bool
 
     public init(id: ArticleID, slug: String? = nil, canonicalURL: URL? = nil, headline: String,
                 standfirst: String? = nil, section: SectionRef? = nil, editorialType: EditorialType? = nil,
                 authors: [Author] = [], publishedAt: Date?, updatedAt: Date? = nil,
                 image: ArticleImage? = nil, isFeatured: Bool = false, breaking: BreakingFlag? = nil,
-                access: AccessLevel = .public, status: String? = "published") {
+                access: AccessLevel = .public, status: String? = "published", revision: String? = nil,
+                isDemo: Bool = false) {
         self.id = id
         self.slug = slug
         self.canonicalURL = canonicalURL
@@ -285,11 +292,13 @@ public struct ArticleSummary: Hashable, Codable, Sendable, Identifiable {
         self.breaking = breaking
         self.access = access
         self.status = status
+        self.revision = revision
+        self.isDemo = isDemo
     }
 
     enum CodingKeys: String, CodingKey {
         case id, slug, canonicalURL = "canonicalUrl", headline, standfirst, section, editorialType
-        case authors, publishedAt, updatedAt, image, isFeatured, breaking, access, status
+        case authors, publishedAt, updatedAt, image, isFeatured, breaking, access, status, revision, isDemo
     }
 
     public init(from decoder: Decoder) throws {
@@ -311,6 +320,23 @@ public struct ArticleSummary: Hashable, Codable, Sendable, Identifiable {
         // Absent access means the backend did not mark it restricted.
         access = (try c.decodeIfPresent(AccessLevel.self, forKey: .access)) ?? .public
         status = try c.decodeIfPresent(String.self, forKey: .status)
+        if let text = try? c.decodeIfPresent(String.self, forKey: .revision) {
+            revision = text
+        } else if let number = try? c.decodeIfPresent(Int64.self, forKey: .revision) {
+            revision = String(number)
+        } else {
+            revision = nil
+        }
+        isDemo = (try? c.decodeIfPresent(Bool.self, forKey: .isDemo)) ?? false
+    }
+
+    /// The best available marker for "this content changed": the explicit revision,
+    /// otherwise the update or publication timestamp. Nil when the backend gave none.
+    public var contentVersionMarker: String? {
+        if let revision { return "r:" + revision }
+        if let updatedAt { return "u:" + String(Int64(updatedAt.timeIntervalSince1970)) }
+        if let publishedAt { return "p:" + String(Int64(publishedAt.timeIntervalSince1970)) }
+        return nil
     }
 
     /// All disclosures for this article's verified authors, de-duplicated by id.
@@ -360,18 +386,99 @@ public struct ArticleSource: Hashable, Codable, Sendable, Identifiable {
     }
 }
 
+/// A correction or clarification the publication attached to an article.
+public struct ArticleCorrection: Hashable, Codable, Sendable, Identifiable {
+    public let id: String
+    public let text: String
+    public let issuedAt: Date?
+
+    public init(id: String, text: String, issuedAt: Date?) {
+        self.id = id
+        self.text = text
+        self.issuedAt = issuedAt
+    }
+}
+
+/// Sponsor information for sponsored content, as supplied by the publication.
+public struct SponsorNotice: Hashable, Codable, Sendable {
+    public let sponsorName: String?
+    public let text: String?
+    public let url: URL?
+
+    public init(sponsorName: String?, text: String?, url: URL?) {
+        self.sponsorName = sponsorName
+        self.text = text
+        self.url = url
+    }
+}
+
+/// A published audio version of the article (HTTPS only).
+public struct ArticleAudio: Hashable, Codable, Sendable {
+    public let url: URL
+    public let durationSeconds: Double?
+    public let title: String?
+    /// e.g. "Read by the author", "Recorded narration". Shown verbatim.
+    public let narration: String?
+
+    public init(url: URL, durationSeconds: Double? = nil, title: String? = nil, narration: String? = nil) {
+        self.url = url
+        self.durationSeconds = durationSeconds
+        self.title = title
+        self.narration = narration
+    }
+}
+
+/// Whether the source supplied the full article text or only a summary.
+public enum ContentCompleteness: String, Hashable, Codable, Sendable {
+    /// Full body from a full-content source: readable and downloadable for offline use.
+    case full
+    /// Summary only (e.g. a feed): the app shows the summary and links to the canonical article.
+    case summaryOnly
+}
+
 /// A full article as returned by the detail endpoint.
 public struct Article: Hashable, Sendable, Identifiable {
     public let summary: ArticleSummary
     public let blocks: [ContentBlock]
     public let sources: [ArticleSource]
+    /// Corrections, newest first. Empty when the publication supplied none.
+    public let corrections: [ArticleCorrection]
+    /// Present only when the publication supplied sponsor details.
+    public let sponsor: SponsorNotice?
+    public let audio: ArticleAudio?
+    /// Related stories supplied by the publication's own metadata. Never computed in the app.
+    public let related: [ArticleSummary]
+    public let completeness: ContentCompleteness
 
     public var id: ArticleID { summary.id }
 
-    public init(summary: ArticleSummary, blocks: [ContentBlock], sources: [ArticleSource] = []) {
+    public init(summary: ArticleSummary, blocks: [ContentBlock], sources: [ArticleSource] = [],
+                corrections: [ArticleCorrection] = [], sponsor: SponsorNotice? = nil,
+                audio: ArticleAudio? = nil, related: [ArticleSummary] = [],
+                completeness: ContentCompleteness = .full) {
         self.summary = summary
         self.blocks = blocks
         self.sources = sources
+        self.corrections = corrections
+        self.sponsor = sponsor
+        self.audio = audio
+        self.related = related
+        self.completeness = completeness
+    }
+
+    /// Full content that may be stored for offline reading: full body, public access.
+    /// Restricted articles are not stored offline until an access policy is agreed.
+    public var isEligibleForOfflineStorage: Bool {
+        completeness == .full && !blocks.isEmpty && summary.access == .public
+    }
+
+    /// Every image URL the article needs offline: cover image and body images.
+    public var imageURLs: [URL] {
+        var urls: [URL] = []
+        if let cover = summary.image?.url { urls.append(cover) }
+        for block in blocks { if case .image(let image) = block { urls.append(image.url) } }
+        var seen = Set<URL>()
+        return urls.filter { seen.insert($0).inserted }
     }
 }
 
@@ -402,10 +509,52 @@ public struct HomeFeed: Hashable, Sendable {
     }
 }
 
-/// What the configured backend supports.
+/// Search filters a reader can choose.
+public enum SearchFilterKind: String, Hashable, Sendable, CaseIterable {
+    case section
+    case type
+}
+
+public struct SearchFilters: Hashable, Sendable {
+    public var sectionSlug: String?
+    public var editorialType: EditorialType?
+
+    public init(sectionSlug: String? = nil, editorialType: EditorialType? = nil) {
+        self.sectionSlug = sectionSlug
+        self.editorialType = editorialType
+    }
+
+    public var isEmpty: Bool { sectionSlug == nil && editorialType == nil }
+
+    /// Filter kinds that are set.
+    public var activeKinds: Set<SearchFilterKind> {
+        var kinds = Set<SearchFilterKind>()
+        if sectionSlug != nil { kinds.insert(.section) }
+        if editorialType != nil { kinds.insert(.type) }
+        return kinds
+    }
+
+    /// Applies the filters on the device (for loaded/downloaded articles, or for
+    /// filters the server does not support).
+    public func matches(_ item: ArticleSummary, kinds: Set<SearchFilterKind> = Set(SearchFilterKind.allCases)) -> Bool {
+        if kinds.contains(.section), let slug = sectionSlug, item.section?.slug != slug { return false }
+        if kinds.contains(.type), let type = editorialType, item.editorialType != type { return false }
+        return true
+    }
+}
+
+/// What the configured backend supports, as reported by its `meta` response.
 public struct NewsCapabilities: Hashable, Sendable {
     /// True when the backend offers full-text search across the publication.
     public let serverSearch: Bool
+    /// Filters the server search accepts. Others are applied on the device and labelled.
+    public let serverSearchFilters: Set<SearchFilterKind>
+    /// True when article detail returns full bodies (offline downloads possible).
+    public let fullContent: Bool
 
-    public init(serverSearch: Bool) { self.serverSearch = serverSearch }
+    public init(serverSearch: Bool, serverSearchFilters: Set<SearchFilterKind> = [], fullContent: Bool = true) {
+        self.serverSearch = serverSearch
+        self.serverSearchFilters = serverSearchFilters
+        self.fullContent = fullContent
+    }
 }

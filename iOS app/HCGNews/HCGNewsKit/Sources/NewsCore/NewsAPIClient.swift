@@ -39,7 +39,15 @@ public actor NewsAPIClient: NewsService {
 
     public func capabilities() async throws -> NewsCapabilities {
         let meta = try await ensureMeta()
-        return NewsCapabilities(serverSearch: meta.capabilities?.search ?? false)
+        let filters = Set((meta.capabilities?.searchFilters ?? []).compactMap(SearchFilterKind.init(rawValue:)))
+        return NewsCapabilities(serverSearch: meta.capabilities?.search ?? false,
+                                serverSearchFilters: filters,
+                                fullContent: meta.capabilities?.fullContent ?? true)
+    }
+
+    public func verifyConnection() async throws -> NewsCapabilities {
+        meta = nil
+        return try await capabilities()
     }
 
     public func home() async throws -> HomeFeed {
@@ -91,10 +99,17 @@ public actor NewsAPIClient: NewsService {
         return response.article(baseURL: configuration.publicationURL)
     }
 
-    public func search(query: String, cursor: String?) async throws -> ArticlePage {
+    public func search(query: String, filters: SearchFilters, cursor: String?) async throws -> ArticlePage {
         let caps = try await capabilities()
         guard caps.serverSearch else { throw NewsServiceError.contractMismatch("Server search is not offered.") }
         var items = [URLQueryItem(name: "q", value: query)]
+        // Only filters the server declared are sent; the caller applies the rest locally.
+        if caps.serverSearchFilters.contains(.section), let slug = filters.sectionSlug {
+            items.append(URLQueryItem(name: "section", value: slug))
+        }
+        if caps.serverSearchFilters.contains(.type), let type = filters.editorialType {
+            items.append(URLQueryItem(name: "type", value: type.wireValue))
+        }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: cursor)) }
         let response: PageResponse = try await get("search", query: items)
         return ArticlePage(items: PublicationVisibility.filter(response.items, now: now()), nextCursor: response.nextCursor)

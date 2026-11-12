@@ -6,25 +6,37 @@ struct HomeView: View {
     @Environment(NewsAppEnvironment.self) private var env
     @Environment(Router.self) private var router
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(\.palette) private var palette
 
     var body: some View {
         let home = env.home
-        ScrollView {
-            content(home: home)
-                .padding(.horizontal, sizeClass == .regular ? 32 : 16)
-                .padding(.bottom, 32)
-                .frame(maxWidth: 1000)
-                .frame(maxWidth: .infinity)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Masthead()
+                    content(home: home)
+                        .padding(.horizontal, sizeClass == .regular ? 32 : 16)
+                        .padding(.bottom, 32)
+                        .frame(maxWidth: 1040)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .refreshable { await home.reload() }
+            .onAppear {
+                // Restore the reader's place when returning from an article or after a layout change.
+                if let anchor = home.scrollAnchor { proxy.scrollTo(anchor, anchor: .center) }
+            }
         }
-        .refreshable { await home.reload() }
         .screenBackground()
         .navigationTitle("Home")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .principal) { MastheadTitle() }
+            ToolbarItem(placement: .principal) { CompactMasthead() }
         }
-        .task { await home.loadIfNeeded() }
+        .task {
+            await home.loadIfNeeded()
+            await env.sections.loadIfNeeded()
+        }
     }
 
     @ViewBuilder
@@ -32,10 +44,8 @@ struct HomeView: View {
         switch home.state {
         case .idle, .loading:
             LoadingStateView(label: "Loading HCG News")
-        case .failed(let error) where error.kind == .notConfigured:
-            NotConnectedView(problems: env.contentConfigurationProblems)
         case .failed(let error):
-            MessageStateView(error: error, retry: { await home.reload() })
+            PublicationErrorView(error: error, problems: env.contentConfigurationProblems) { await home.reload() }
         case .loaded(let content):
             loaded(content, home: home)
         }
@@ -46,67 +56,99 @@ struct HomeView: View {
         @Bindable var home = home
         let wide = sizeClass == .regular
         LazyVStack(alignment: .leading, spacing: 0) {
-            if let error = home.loadMoreError {
-                InlineErrorRow(error: error) { await home.reload() }
-                    .padding(.top, 12)
+            if let error = home.refreshError {
+                InlineErrorRow(error: error) { await home.reload() }.padding(.top, 12)
             }
             if home.breaking.current != nil {
                 BreakingNewsBanner(carousel: $home.breaking) { article in
-                    router.open(.article(article.id), compact: sizeClass == .compact)
+                    home.scrollAnchor = article.id
+                    router.open(.article(article.id))
                 }
-                .padding(.top, 12)
+                .padding(.top, 14)
             }
+            SectionStrip()
 
-            if content.featured.isEmpty && content.latest.isEmpty {
+            if content.isEmpty {
                 MessageStateView(title: "No articles yet",
-                                 message: "The publication has no published articles to show right now.",
-                                 systemImage: "newspaper",
-                                 retry: { await home.reload() })
+                                 message: env.platformAccount != nil
+                                    ? "The publication returned no published articles. If articles are live on news.hakmicapitalgroup.com, the publication hasn't opened public reading to apps yet; Settings › Advanced › Check Connection shows the details."
+                                    : "The publication has no published articles to show right now.",
+                                 systemImage: "newspaper", retry: { await home.reload() })
             }
 
-            if let lead = content.featured.first {
-                FeedHeader(title: "Featured")
-                NavigationLink(value: Route.article(lead.id)) {
-                    LeadArticleCard(summary: lead, wide: wide)
+            if let lead = content.lead {
+                FeedHeader(title: content.hasEditorialFeatured ? "Featured" : "Top story")
+                link(lead, home: home) {
+                    LeadArticleCard(summary: lead, wide: wide, download: env.saved.download(for: lead.id))
                         .padding(.vertical, 16)
                 }
-                .buttonStyle(.plain)
-                ForEach(content.featured.dropFirst()) { item in
-                    row(item)
-                }
+                RowSeparator()
+                // Further editorially featured stories (only when the publication marked them).
+                ForEach(content.featured.dropFirst()) { item in row(item, home: home) }
             }
 
-            if !content.latest.isEmpty {
-                FeedHeader(title: "Latest")
-                ForEach(content.latest) { item in
-                    row(item)
+            let latest = content.hasEditorialFeatured ? content.latest : Array(content.latest.dropFirst())
+            if !latest.isEmpty {
+                FeedHeader(title: "Latest", trailing: home.lastUpdated.map { "Updated \(NewsDate.short($0))" })
+                ForEach(latest) { item in
+                    row(item, home: home)
                         .onAppear {
-                            if item.id == content.latest.last?.id {
-                                Task { await home.loadMore() }
-                            }
+                            if item.id == latest.last?.id { Task { await home.loadMore() } }
                         }
                 }
                 if home.isLoadingMore {
                     ProgressView().frame(maxWidth: .infinity).padding()
-                } else if content.nextCursor == nil, content.latest.count > 5 {
+                } else if content.nextCursor == nil, latest.count > 6 {
                     Text("You're up to date.")
                         .font(.footnote)
-                        .foregroundStyle(palette.secondaryText)
+                        .foregroundStyle(Palette.secondaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 20)
                 }
             }
         }
-        .frame(maxWidth: wide ? 1000 : 760, alignment: .leading)
+        .frame(maxWidth: wide ? 1040 : 760, alignment: .leading)
     }
 
-    private func row(_ item: ArticleSummary) -> some View {
-        VStack(spacing: 0) {
-            NavigationLink(value: Route.article(item.id)) {
-                ArticleRow(summary: item)
-            }
+    private func link<Label: View>(_ item: ArticleSummary, home: HomeModel, @ViewBuilder label: () -> Label) -> some View {
+        NavigationLink(value: Route.article(item.id)) { label() }
             .buttonStyle(.plain)
-            Rectangle().fill(palette.separator).frame(height: 1)
+            .id(item.id)
+            .simultaneousGesture(TapGesture().onEnded { home.scrollAnchor = item.id })
+    }
+
+    private func row(_ item: ArticleSummary, home: HomeModel) -> some View {
+        VStack(spacing: 0) {
+            link(item, home: home) { ArticleRow(summary: item, download: env.saved.download(for: item.id)) }
+            RowSeparator()
+        }
+    }
+}
+
+/// Horizontal section navigation from the content service's own sections.
+struct SectionStrip: View {
+    @Environment(NewsAppEnvironment.self) private var env
+
+    var body: some View {
+        if case .loaded(let nodes) = env.sections.state, !nodes.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(nodes) { node in
+                        NavigationLink(value: Route.section(slug: node.section.slug, name: node.section.name)) {
+                            Text(node.section.name)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Palette.primaryText)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 44)
+                                .overlay(Capsule().strokeBorder(Palette.separator, lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 12)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Sections")
         }
     }
 }

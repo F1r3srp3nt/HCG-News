@@ -30,9 +30,9 @@ cd "iOS app"
 open HCGNews/HCGNews.xcodeproj
 ```
 
-Choose the **HCGNews** scheme and an iPhone or iPad simulator, then press ⌘R. With no configuration installed the app shows **"Live publication not connected"**. That is expected.
+Choose the **HCGNews** scheme and an iPhone or iPad simulator, then press ⌘R. The bundled configuration connects the app to the live publication, so Home shows published articles. If it says "No articles yet" while articles are live on the website, run `tools/verify-hcg-news-access.sh` (see [INTEGRATION-REPORT.md](INTEGRATION-REPORT.md) §5).
 
-To see the layouts with content, edit the scheme (Run ▸ Arguments ▸ Environment Variables) and add `HCGNEWS_UI_TEST_FIXTURES = 1`. An orange **"TEST FIXTURES — not live reporting"** banner appears on every screen. Fixtures exist only in Debug builds. Optional extras: `HCGNEWS_UI_TEST_OFFLINE=1`, `HCGNEWS_UI_TEST_EMPTY=1`, `HCGNEWS_UI_TEST_RESET=1`.
+To see the layouts with content, edit the scheme (Run ▸ Arguments ▸ Environment Variables) and add `HCGNEWS_UI_TEST_FIXTURES = 1`. An orange **"DEVELOPMENT FIXTURES — not live reporting"** banner appears on every screen. Fixtures exist only in Debug builds, and use their own storage folder (`Application Support/HCGNews-DevFixtures`), separate from real saved articles and drafts. Optional extras: `HCGNEWS_UI_TEST_OFFLINE=1`, `HCGNEWS_UI_TEST_EMPTY=1`, `HCGNEWS_UI_TEST_RESET=1`.
 
 ## Build and test from Terminal
 
@@ -96,7 +96,7 @@ Do these on a simulator or device, in **both** reading styles (Settings ▸ Read
 
 | # | Check | How |
 |---|---|---|
-| 1 | Unconfigured honesty | Normal launch: "Live publication not connected", no articles, Settings says sign-in isn't set up. |
+| 1 | Connected reading | Normal launch: published articles from the publication. Settings: "Not signed in · public articles never need an account", and no Newsroom entry. |
 | 2 | iPhone navigation | Tabs Home / Sections / Search / Saved; gear opens Settings; back-swipe works. |
 | 3 | iPad landscape and portrait | Sidebar with destinations, sections and Settings; rotate while reading an article and confirm you stay on it. |
 | 4 | Split View / Slide Over | Put HCG News next to Safari at ⅓ width: the app switches to tabs, nothing clips, no horizontal scrolling. Widen it back: the sidebar returns and the article is still open. |
@@ -115,6 +115,10 @@ Do these on a simulator or device, in **both** reading styles (Settings ▸ Read
 | 17 | Offline | Airplane mode: "You're offline" with Try Again (also automated in fixture mode). |
 | 18 | Auth cancellation / expiry / denial | **Needs an approved HCG Connect configuration.** See the handoff, §8. |
 
+## Full manual checklist
+
+See [ACCEPTANCE-CHECKLIST.md](ACCEPTANCE-CHECKLIST.md).
+
 ## What has and has not been run
 
-See [MILESTONE-1-REPORT.md](MILESTONE-1-REPORT.md).
+See [MILESTONE-2-REPORT.md](MILESTONE-2-REPORT.md) and [MILESTONE-1-REPORT.md](MILESTONE-1-REPORT.md).

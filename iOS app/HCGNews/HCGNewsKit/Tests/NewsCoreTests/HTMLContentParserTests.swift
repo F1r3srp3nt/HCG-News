@@ -5,6 +5,12 @@ final class HTMLContentParserTests: XCTestCase {
     let base = URL(string: "https://news.hakmicapitalgroup.com/articles/test")!
     var parser: HTMLContentParser { HTMLContentParser(baseURL: base) }
 
+    func testUnderlineIsKeptAsItsOwnStyle() {
+        let blocks = parser.parse("<p>a <u>b <strong>c</strong></u> d</p>")
+        XCTAssertEqual(blocks, [.paragraph(InlineText([InlineRun("a "), InlineRun("b ", underline: true),
+                                                       InlineRun("c", bold: true, underline: true), InlineRun(" d")]))])
+    }
+
     func testParagraphsHeadingsAndInlineFormatting() {
         let blocks = parser.parse("""
         <h2>Section  heading</h2>

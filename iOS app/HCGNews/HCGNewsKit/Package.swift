@@ -10,6 +10,11 @@ import PackageDescription
 // - HCGConnect:    HCG Connect native sign-in preparation: configuration validation, PKCE,
 //                  authorization request/callback handling, token and App Access models, session
 //                  coordination. No endpoints or client IDs are built in. Foundation only.
+// - Newsroom:      local drafts (autosave, recovery, snapshots, export/import), and the
+//                  capability-gated client for the PROPOSED newsroom API. Foundation only.
+// - HCGPlatform:   the REAL integration: public publication content, HCG account sign-in, newsroom
+//                  roles and editorial workflow, media and ERP handoff, against the shared HCG project
+//                  and the HCG website's mobile routes. Foundation only.
 // - NewsAppModel:  observable screen models (Home, Sections, Search, Saved, Article, Account).
 //                  Foundation + Observation.
 //
@@ -23,17 +28,23 @@ let package = Package(
         .library(name: "NewsCore", targets: ["NewsCore"]),
         .library(name: "HCGConnect", targets: ["HCGConnect"]),
         .library(name: "NewsAppModel", targets: ["NewsAppModel"]),
+        .library(name: "Newsroom", targets: ["Newsroom"]),
+        .library(name: "HCGPlatform", targets: ["HCGPlatform"]),
     ],
     targets: [
         .target(name: "HCGTransport"),
         .target(name: "NewsCore", dependencies: ["HCGTransport"]),
         .target(name: "HCGConnect", dependencies: ["HCGTransport"]),
-        .target(name: "NewsAppModel", dependencies: ["NewsCore", "HCGConnect"]),
+        .target(name: "Newsroom", dependencies: ["NewsCore", "HCGTransport"]),
+        .target(name: "HCGPlatform", dependencies: ["NewsCore", "HCGTransport", "HCGConnect"]),
+        .target(name: "NewsAppModel", dependencies: ["NewsCore", "HCGConnect", "Newsroom", "HCGPlatform"]),
         // Test-only helpers (fake transport, fictional fixtures). Not a product; never linked into the app.
         .target(name: "HCGTestSupport", dependencies: ["HCGTransport"], path: "Tests/HCGTestSupport"),
         .testTarget(name: "NewsCoreTests", dependencies: ["NewsCore", "HCGTransport", "HCGTestSupport"]),
         .testTarget(name: "HCGConnectTests", dependencies: ["HCGConnect", "HCGTransport", "HCGTestSupport"]),
-        .testTarget(name: "NewsAppModelTests", dependencies: ["NewsAppModel", "NewsCore", "HCGConnect", "HCGTransport", "HCGTestSupport"]),
+        .testTarget(name: "NewsAppModelTests", dependencies: ["NewsAppModel", "NewsCore", "HCGConnect", "HCGTransport", "HCGTestSupport", "Newsroom", "HCGPlatform"]),
+        .testTarget(name: "HCGPlatformTests", dependencies: ["HCGPlatform", "NewsCore", "HCGConnect", "HCGTransport", "HCGTestSupport"]),
+        .testTarget(name: "NewsroomTests", dependencies: ["Newsroom", "NewsCore", "HCGTransport", "HCGTestSupport"]),
     ],
     swiftLanguageModes: [.v6]
 )

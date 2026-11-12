@@ -58,7 +58,7 @@ public enum BreakingNewsRule {
     public static let maximumItems = 5
 
     public static func isBreaking(_ item: ArticleSummary, now: Date = Date()) -> Bool {
-        guard let flag = item.breaking, flag.active else { return false }
+        guard !item.isDemo, let flag = item.breaking, flag.active else { return false }
         if let expiry = flag.expiresAt, expiry <= now { return false }
         return true
     }
