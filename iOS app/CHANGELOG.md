@@ -2,6 +2,11 @@
 
 Version numbers change only on purpose and are recorded here: `MARKETING_VERSION` (`CURRENT_PROJECT_VERSION`). None of these builds has been released, uploaded to TestFlight or submitted.
 
+## Unreleased — app icon (version unchanged: 0.2.0 (2))
+
+- The app icon is now the supplied HCG News icon set (from `HCG-News-Icons.zip`), installed byte-for-byte as `AppIcon.appiconset`. It has 18 slots (8 iPhone, 9 iPad, 1 App Store), using 13 opaque RGB PNGs.
+- It replaces the single 1024 px icon generated in 0.2.0. `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` is unchanged (Debug and Release). The bundle id, signing, deployment target, version and build number are unchanged.
+
 ## 0.2.0 (2) — 11 November 2026 — development build
 
 **Brand**

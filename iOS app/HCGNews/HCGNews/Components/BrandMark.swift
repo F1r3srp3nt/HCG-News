@@ -3,7 +3,8 @@ import SwiftUI
 // Logo assets (inspected before use):
 // - HCGNewsMark: the HCG logo supplied for this app (silver, cyan light-lines on black;
 //   margins trimmed, proportions unchanged). Used for the masthead and compact marks.
-// - AppIcon: the same artwork centred, whole, on black.
+// - AppIcon: the supplied HCG News icon set (HCG-News-Icons.zip), installed unchanged;
+//   all iPhone, iPad and App Store sizes. Not used inside the app's screens.
 // - HCGLogo / HCGLogoTrimmed: the Hakmi Capital Group corporate mark. Used only for
 //   publisher attribution ("A Hakmi Capital Group publication").
 // The artwork is always shown on its native black ground, at its own aspect ratio.

@@ -9,7 +9,7 @@ Mark each item ☐ pass / ☐ fail / ☐ not run.
 
 ## Brand and layout
 - [ ] F — Masthead: the HCG logo (silver with cyan light lines) on black, at its own proportions (never stretched or cropped), "NEWS" beside it, and today's date.
-- [ ] F — App icon on the home screen shows the whole HCG logo on black.
+- [ ] F — The app icon on the home screen, in Settings and in Spotlight is the supplied HCG News icon (brushed-silver newspaper with "HCG NEWS" and cyan edges), on iPhone and iPad.
 - [ ] F — About and Account show "A Hakmi Capital Group publication" with the Hakmi Capital Group mark.
 - [ ] F — Cyan appears only on actions and status (buttons, links, the breaking marker, download state). There are no large blue panels.
 - [ ] F — Appearance: System, Light and Dark switch everything, including sheets. Increase Contrast strengthens secondary text and separators.
