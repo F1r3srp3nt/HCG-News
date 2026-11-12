@@ -4,6 +4,7 @@ import NewsCore
 import HCGConnect
 import HCGTransport
 import Newsroom
+import HCGPlatform
 
 /// Platform pieces the app supplies (system browser, Keychain, network).
 public struct PlatformServices: Sendable {
@@ -13,9 +14,12 @@ public struct PlatformServices: Sendable {
     public let userAgent: String
     public let redirectScheme: String
     public let appVersion: String
+    /// Keychain item for the HCG account session (separate from the OAuth item).
+    public let accountStore: ConnectSessionStoring
 
     public init(transport: HTTPTransport, browser: BrowserAuthenticating, sessionStore: ConnectSessionStoring,
-                userAgent: String, redirectScheme: String, appVersion: String) {
+                userAgent: String, redirectScheme: String, appVersion: String, accountStore: ConnectSessionStoring? = nil) {
+        self.accountStore = accountStore ?? InMemorySessionStore()
         self.transport = transport
         self.browser = browser
         self.sessionStore = sessionStore
@@ -33,9 +37,13 @@ public struct LocalStores: Sendable {
     public let positions: ReadingPositionStore
     public let drafts: DraftStore
     public let log: LocalEventLog
+    /// Unsaved edits to newsroom articles on HCG, per account.
+    public let remoteEdits: RemoteEditBackupStore
 
     public init(configuration: ConfigurationStore, bookmarks: BookmarkStore, offline: OfflineLibrary,
-                positions: ReadingPositionStore, drafts: DraftStore, log: LocalEventLog) {
+                positions: ReadingPositionStore, drafts: DraftStore, log: LocalEventLog,
+                remoteEdits: RemoteEditBackupStore = RemoteEditBackupStore(root: nil)) {
+        self.remoteEdits = remoteEdits
         self.configuration = configuration
         self.bookmarks = bookmarks
         self.offline = offline
@@ -53,7 +61,8 @@ public struct LocalStores: Sendable {
             offline: OfflineLibrary(root: root.appendingPathComponent("Offline")),
             positions: ReadingPositionStore(fileURL: root.appendingPathComponent("reading-positions.json")),
             drafts: DraftStore(root: root.appendingPathComponent("Newsroom/Drafts")),
-            log: LocalEventLog(fileURL: root.appendingPathComponent("event-log.json")))
+            log: LocalEventLog(fileURL: root.appendingPathComponent("event-log.json")),
+            remoteEdits: RemoteEditBackupStore(root: root.appendingPathComponent("Newsroom/RemoteEdits", isDirectory: true)))
     }
 }
 
@@ -76,6 +85,10 @@ public final class NewsAppEnvironment {
     public let search: SearchModel
     public let newsroom: NewsroomModel
     public let admin: AdminModel
+    /// The HCG account (when the publication is connected to the HCG platform).
+    public let platformAccount: PlatformAccountModel?
+    /// The newsroom on HCG (when the publication is connected to the HCG platform).
+    public let newsroomDesk: NewsroomDeskModel?
     public let stores: LocalStores
     /// True only for DEBUG UI-test runs with labelled fixture content.
     public let isUsingTestFixtures: Bool
@@ -95,7 +108,8 @@ public final class NewsAppEnvironment {
                 transport: HTTPTransport?,
                 appVersion: String,
                 isUsingTestFixtures: Bool = false,
-                generation: Int = 0) {
+                generation: Int = 0,
+                platform: (account: PlatformAccountModel, repository: NewsroomRepository)? = nil) {
         publicationConfiguration = publication.0
         publicationSource = publication.1
         connectConfiguration = connectConfig.0
@@ -140,6 +154,28 @@ public final class NewsAppEnvironment {
         }
         self.newsroom = newsroom
         admin = AdminModel(newsroom: newsroom, service: newsroomService, log: stores.log)
+        if let platform, case .ready(let c) = publication.0 {
+            platformAccount = platform.account
+            let desk = NewsroomDeskModel(account: platform.account, repository: platform.repository, backups: stores.remoteEdits,
+                                         publicationURL: c.publicationURL, log: stores.log)
+            newsroomDesk = desk
+            platform.account.onAccountChange = { [weak desk] in desk?.reset() }
+        } else {
+            platformAccount = nil
+            newsroomDesk = nil
+        }
+    }
+
+    /// Whether to offer the Newsroom. With the HCG platform connected, only to people HCG
+    /// gave an HCG News newsroom role in this session.
+    public var showsNewsroomEntry: Bool {
+        guard let platformAccount else { return true }
+        return platformAccount.currentPermissions.isStaff
+    }
+
+    /// Restores sessions and checks access (launch and configuration changes).
+    public func restoreAccounts() async {
+        if let platformAccount { await platformAccount.restore() } else { await account.restore() }
     }
 
     /// One list model per section, kept for the session so back-navigation keeps scroll state.
@@ -206,7 +242,16 @@ public final class AppContainer {
         let service: NewsService
         var newsroomService: NewsroomService = UnavailableNewsroomService()
         var newsroomConfigured = false
+        var platformParts: (account: PlatformAccountModel, repository: NewsroomRepository)?
         switch publication.0 {
+        case .ready(let c) where c.platform != nil:
+            let client = PlatformClient(configuration: c.platform!, transport: platform.transport, userAgent: platform.userAgent)
+            service = PublicationContentService(client: client)
+            let session = HCGAccountSession(client: client, store: platform.accountStore)
+            let caller = AuthorizedCaller(account: session)
+            let account = PlatformAccountModel(session: session, roles: NewsroomRoleResolver(client: client, caller: caller),
+                                               workspaces: HCGWorkspaceService(client: client, caller: caller), log: stores.log)
+            platformParts = (account, NewsroomRepository(client: client, caller: caller))
         case .ready(let c):
             service = NewsAPIClient(configuration: c, transport: platform.transport, userAgent: platform.userAgent,
                                     accessToken: { await coordinator.validAccessToken() })
@@ -223,7 +268,7 @@ public final class AppContainer {
         return NewsAppEnvironment(publication: publication, connect: connect, service: service,
                                   newsroomService: newsroomService, newsroomServiceConfigured: newsroomConfigured,
                                   coordinator: coordinator, stores: stores, transport: platform.transport,
-                                  appVersion: platform.appVersion, generation: generation)
+                                  appVersion: platform.appVersion, generation: generation, platform: platformParts)
     }
 
     // MARK: Configuration changes
@@ -247,6 +292,18 @@ public final class AppContainer {
     }
 
     private func handle(_ change: ConfigurationChange) async {
+        let previousPlatform: HCGPlatformConfiguration? = {
+            if case .ready(let c) = environment.publicationConfiguration { return c.platform }
+            return nil
+        }()
+        let newState = await stores.configuration.publicationState().0
+        var newPlatform: HCGPlatformConfiguration?
+        if case .ready(let c) = newState { newPlatform = c.platform }
+        if let previousPlatform, previousPlatform != newPlatform, let account = environment.platformAccount {
+            // Different (or no) HCG platform: the HCG account session must not carry over.
+            await account.session.endLocally()
+            await stores.log.record(.account, "Publication connection changed: HCG account session cleared on this device")
+        }
         if change.identityChanged {
             // A different identity setup: the old session and account data must not carry over.
             await environment.connect.forgetLocalSession()
@@ -259,7 +316,7 @@ public final class AppContainer {
         generation += 1
         environment = await Self.build(platform: platform, stores: stores, generation: generation)
         await environment.saved.load()
-        await environment.account.restore()
+        await environment.restoreAccounts()
     }
 
     public func clearChangeMessage() { lastChangeMessage = nil }
@@ -275,4 +332,13 @@ public final class AppContainer {
             offlineBytes: await stores.offline.usageBytes(),
             events: await stores.log.all())
     }
+}
+
+/// Used when no Keychain store is supplied (tests, previews).
+final class InMemorySessionStore: ConnectSessionStoring, @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: ConnectSession?
+    func load() throws -> ConnectSession? { lock.withLock { stored } }
+    func save(_ session: ConnectSession) throws { lock.withLock { stored = session } }
+    func delete() throws { lock.withLock { stored = nil } }
 }

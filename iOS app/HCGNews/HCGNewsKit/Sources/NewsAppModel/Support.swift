@@ -97,6 +97,9 @@ public enum DiagnosticsReport {
         lines.append("")
         lines.append("Publication configuration: \(sourceLabel(publication.1))")
         switch publication.0 {
+        case .ready(let c) where c.platform != nil:
+            lines.append("  environment: \(c.environment), HCG platform (\(c.platform!.projectURL.host ?? "?"))")
+            lines.append("  publication: \(c.publicationURL.host ?? "?"), website: \(c.platform!.websiteURL.host ?? "?")")
         case .ready(let c):
             lines.append("  environment: \(c.environment), contract v\(c.contractVersion)")
             lines.append("  content API host: \(c.apiBaseURL.host ?? "?")")

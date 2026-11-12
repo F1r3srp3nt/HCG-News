@@ -17,6 +17,15 @@ public struct NewsroomArticleSummary: Identifiable, Equatable, Sendable {
     public let authorName: String?
     public let createdBy: String?
 
+    public init(id: String, title: String, slug: String?, status: String, contentType: String?, publishedAt: Date?,
+                updatedAt: Date?, isFeatured: Bool, isBreaking: Bool, isDemo: Bool, sectionName: String?,
+                authorName: String?, createdBy: String?) {
+        self.id = id; self.title = title; self.slug = slug; self.status = status; self.contentType = contentType
+        self.publishedAt = publishedAt; self.updatedAt = updatedAt; self.isFeatured = isFeatured
+        self.isBreaking = isBreaking; self.isDemo = isDemo; self.sectionName = sectionName
+        self.authorName = authorName; self.createdBy = createdBy
+    }
+
     public var editorialStatus: EditorialStatus? { EditorialStatus(rawValue: status) }
 
     /// Published with a publication time still in the future.
@@ -144,6 +153,13 @@ public struct NewsroomArticle: Identifiable, Equatable, Sendable {
     public let isDemo: Bool
     public let viewCount: Int?
     public let fields: NewsroomArticleFields
+
+    public init(id: String, createdBy: String?, createdAt: Date?, revision: String, updatedAt: Date?, status: String,
+                publishedAt: Date?, isDemo: Bool, viewCount: Int?, fields: NewsroomArticleFields) {
+        self.id = id; self.createdBy = createdBy; self.createdAt = createdAt; self.revision = revision
+        self.updatedAt = updatedAt; self.status = status; self.publishedAt = publishedAt; self.isDemo = isDemo
+        self.viewCount = viewCount; self.fields = fields
+    }
 
     public var editorialStatus: EditorialStatus? { EditorialStatus(rawValue: status) }
 

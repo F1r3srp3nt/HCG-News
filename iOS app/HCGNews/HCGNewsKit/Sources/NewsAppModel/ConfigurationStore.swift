@@ -13,6 +13,9 @@ public enum ConfigurationKind: String, Sendable, CaseIterable, Identifiable {
     public var id: String { rawValue }
     /// Top-level key in the JSON file.
     public var sectionKey: String { self == .publication ? "content" : "connect" }
+    /// Accepted top-level keys, in order of preference. A publication is either the HCG
+    /// platform (`hcgPlatform`) or the proposed content API (`content`).
+    public var sectionKeys: [String] { self == .publication ? ["hcgPlatform", "content"] : ["connect"] }
     public var title: String { self == .publication ? "Publication" : "HCG Connect" }
 }
 
@@ -100,8 +103,8 @@ public actor ConfigurationStore {
             let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
             return (data, .imported((attributes?[.modificationDate] as? Date) ?? Date()))
         }
-        if let bundled, Self.section(kind, in: bundled) != nil {
-            return (Self.wrap(kind, Self.section(kind, in: bundled)!), .bundled)
+        if let bundled, let entry = Self.section(kind, in: bundled) {
+            return (Self.wrap(entry.key, entry.value), .bundled)
         }
         return (nil, .none)
     }
@@ -135,24 +138,37 @@ public actor ConfigurationStore {
         }
         var notes: [String] = []
         let section: Any
-        if let wrapped = object[kind.sectionKey] {
-            section = wrapped
+        var sectionKey = kind.sectionKey
+        let allKeys = ConfigurationKind.publication.sectionKeys + ConfigurationKind.connect.sectionKeys
+        if let entry = Self.section(kind, in: object) {
+            section = entry.value
+            sectionKey = entry.key
             let other: ConfigurationKind = kind == .publication ? .connect : .publication
-            if object[other.sectionKey] != nil {
+            if other.sectionKeys.contains(where: { object[$0] != nil }) {
                 notes.append("The file also contains a \(other.title) section. It is not imported here; import it separately under \(other.title).")
             }
-        } else if object["content"] == nil && object["connect"] == nil {
+        } else if !allKeys.contains(where: { object[$0] != nil }) {
             section = object   // A bare section object.
         } else {
             return invalid(["The file has no \"\(kind.sectionKey)\" section for \(kind.title)."])
         }
         guard let sectionObject = section as? [String: Any],
-              let normalized = try? JSONSerialization.data(withJSONObject: [kind.sectionKey: sectionObject], options: [.sortedKeys])
+              let normalized = try? JSONSerialization.data(withJSONObject: [sectionKey: sectionObject], options: [.sortedKeys])
         else { return invalid(["The \(kind.title) section is not a JSON object."]) }
 
         switch kind {
         case .publication:
             switch NewsConfigurationLoader.load(normalized) {
+            case .ready(let c) where c.platform != nil:
+                let p = c.platform!
+                return ConfigurationImportPreview(
+                    kind: kind, environment: c.environment,
+                    destinations: ["HCG platform — \(p.projectURL.host ?? "?") (shared HCG identity and newsroom)",
+                                   "Publication — \(p.publicationURL.host ?? "?")",
+                                   "HCG website — \(p.websiteURL.host ?? "?")",
+                                   "Sign-in — your HCG account (email and password)"],
+                    problems: [], notes: notes + ["This replaces how the app signs in: HCG accounts sign in directly, the same way as on the HCG website and in HCG ONE."],
+                    changesIdentity: false, normalized: normalized)
             case .ready(let c):
                 var destinations = ["Content API — \(c.apiBaseURL.host ?? "?")\(c.apiBaseURL.path)",
                                     "Publication — \(c.publicationURL.host ?? "?")",
@@ -239,12 +255,17 @@ public actor ConfigurationStore {
         [c.environment, c.issuer.absoluteString, c.clientID, c.appIdentifier, c.appAccessEndpoint.absoluteString].joined(separator: "|")
     }
 
-    static func section(_ kind: ConfigurationKind, in data: Data) -> Any? {
+    static func section(_ kind: ConfigurationKind, in data: Data) -> (key: String, value: Any)? {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        return object[kind.sectionKey]
+        return section(kind, in: object)
     }
 
-    static func wrap(_ kind: ConfigurationKind, _ section: Any) -> Data {
-        (try? JSONSerialization.data(withJSONObject: [kind.sectionKey: section], options: [.sortedKeys])) ?? Data()
+    static func section(_ kind: ConfigurationKind, in object: [String: Any]) -> (key: String, value: Any)? {
+        for key in kind.sectionKeys { if let value = object[key] { return (key, value) } }
+        return nil
+    }
+
+    static func wrap(_ key: String, _ section: Any) -> Data {
+        (try? JSONSerialization.data(withJSONObject: [key: section], options: [.sortedKeys])) ?? Data()
     }
 }
