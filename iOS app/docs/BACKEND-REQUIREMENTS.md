@@ -1,5 +1,7 @@
 # Backend work the app is waiting for
 
+> **Superseded for live use (12 November 2026).** The app now uses the publication's real backend: the shared HCG project's `news_*` tables, `news_has_feature` and media storage, plus HCG's sister-app sign-in and the website's mobile routes. See [INTEGRATION-REPORT.md](INTEGRATION-REPORT.md). The only backend work that may still be needed is the public read policy, if the access check fails: [../backend/HCG-NEWS-PUBLIC-READ.md](../backend/HCG-NEWS-PUBLIC-READ.md). The proposals below remain as an option, if HCG prefers a dedicated content API later.
+
 Updated for app version 0.2.0 (2), 11 November 2026. The app side of every item below is built and tested against fixtures. Nothing here was tested against a live HCG service, because none of these contracts exist yet. Main HCG and the News website are frozen for about half a week. This list is what to pick up when they reopen.
 
 ## A. News website (publication owner) — content API

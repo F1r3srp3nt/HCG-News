@@ -2,6 +2,38 @@
 
 Version numbers change only on purpose and are recorded here: `MARKETING_VERSION` (`CURRENT_PROJECT_VERSION`). None of these builds has been released, uploaded to TestFlight or submitted.
 
+## Unreleased — real HCG integration (version unchanged: 0.2.0 (2))
+
+Connected to the real publication and HCG identity, using the contracts the HCG News website and HCG ONE already use. Details: [docs/INTEGRATION-REPORT.md](docs/INTEGRATION-REPORT.md).
+
+**Reading**
+- Public reading from the publication's own tables, with the public key only: published, due articles, reader columns only, and an on-device visibility re-check.
+- Pagination, sections, search with section and type filters, and canonical `/<section>/<slug>` sharing.
+- "Demo content" label. The founder's author disclosure is mirrored from the website.
+
+**Account**
+- HCG-branded sign-in with the existing HCG account. Keychain storage, refresh, revocation detection, and an exact sign-out report.
+- HCG News roles from HCG.
+- HCG workspaces (ERP, Executive Control Center) open through one-time links in Safari.
+
+**Newsroom (HCG News staff only)**
+- Desk with filters and search.
+- Editor with lossless body editing, media library and upload, versions, preview, revision-guarded saves, conflict resolution, and on-device protection of unsaved edits.
+- Role-gated status changes with confirmations; publish or schedule.
+- Administration: sections, and the audit history for Administrators.
+
+**Configuration**
+- `HCGNews/Resources/HCGNewsConfiguration.json` (`hcgPlatform`, public values only) is bundled, so Release and archive builds are connected.
+- The loader refuses secret and service-role keys and other projects.
+
+**Tools**
+- `tools/verify-hcg-news-access.sh`: an access check to run yourself.
+- `backend/`: a public-read SQL handoff, applied only if the check fails.
+
+**Tests**
+- 181 package tests (46 new).
+- The real-build UI test now expects a connected app.
+
 ## Unreleased — app icon (version unchanged: 0.2.0 (2))
 
 - The app icon is now the supplied HCG News icon set (from `HCG-News-Icons.zip`), installed byte-for-byte as `AppIcon.appiconset`. It has 18 slots (8 iPhone, 9 iPad, 1 App Store), using 13 opaque RGB PNGs.

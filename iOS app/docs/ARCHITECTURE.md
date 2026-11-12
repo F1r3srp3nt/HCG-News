@@ -28,11 +28,16 @@ HCGNews/
                                  OfflineLibrary, BookmarkStore (v2 + migration), ReadingPositionStore
     HCGConnect                   configuration, PKCE, coordinator (sign-in, refresh, App Access,
                                  organisation, reachability, sign-out), Keychain store
+    HCGPlatform                  THE REAL INTEGRATION: PlatformClient (PostgREST/Auth/Storage + website
+                                 mobile routes), PublicationContentService (public reading),
+                                 HCGAccountSession (HCG account sign-in), NewsroomRoleResolver
+                                 (news_has_feature), NewsroomRepository (articles, versions, media,
+                                 sections, authors, audit), ArticleBodyCodec, HCGWorkspaceService (ERP)
     Newsroom                     drafts, DraftStore (autosave, snapshots, media, export/import),
                                  NewsroomService (proposed API client), NewsroomGate
     NewsAppModel                 ConfigurationStore, AppContainer/NewsAppEnvironment, screen models,
                                  Account/Connection models, Newsroom/Editor/Admin models, event log, diagnostics
-    Tests/                       135 XCTest cases
+    Tests/                       181 XCTest cases
 ```
 
 ## 2. Composition and configuration
@@ -45,7 +50,9 @@ LocalStores (survive configuration changes)
   ReadingPositionStore, DraftStore (Newsroom/Drafts/<id>/…), LocalEventLog
 
 AppContainer ── build() ──► NewsAppEnvironment (generation n)
-   │                        ├─ NewsService: NewsAPIClient (configured) | UnconfiguredNewsService(missing|invalid)
+   │                        ├─ NewsService: PublicationContentService (hcgPlatform, bundled)
+   │                        │              | NewsAPIClient (proposed API) | UnconfiguredNewsService(missing|invalid)
+   │                        ├─ PlatformAccountModel + NewsroomDeskModel (hcgPlatform only)
    │                        ├─ HCGConnectCoordinator (configured or unavailable)
    │                        ├─ NewsroomService: NewsroomAPIClient (if newsroomAPIBaseURL) | Unavailable
    │                        └─ Home/Sections/Search/Saved/Article/Account/Connection/Newsroom/Admin models
@@ -74,6 +81,15 @@ Unchanged from 0.1.0, with one addition:
 - Disclosures, corrections, sponsor details and related stories are displayed only as supplied, never generated.
 
 ## 5. Identity and authorisation
+
+**With the HCG platform (the bundled configuration):**
+- Sign-in is HCG's documented sister-app contract: the shared identity service's password grant, the same HCG account as the website and HCG ONE. The session is kept in the Keychain (`com.hakmicapitalgroup.hcgnews.account`, this device only).
+- Newsroom roles come from `news_has_feature` with the person's token. The Newsroom is shown only to staff. Roles are re-checked on foreground (at most once a minute) and after every refusal.
+- `NewsroomPermissions` mirrors the website's rules to decide what to *offer*. Row-level security on every request is the authority.
+- ERP and executive tools: the website's workspace directory, plus a one-time handoff link opened in Safari.
+- Sign-out or an account change clears roles, the workspace directory and newsroom lists. Unsaved newsroom edits stay on the device, per account.
+
+**With an OAuth (HCG Connect) configuration, when a native client is registered:**
 
 - Public native client with PKCE in the system browser; sessions in the Keychain.
 - Organisation selection only when HCG lists several organisations. Capabilities and entitlements are displayed as issued.

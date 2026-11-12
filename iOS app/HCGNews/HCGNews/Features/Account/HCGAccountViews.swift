@@ -193,9 +193,9 @@ struct HCGAccountView: View {
                         Spacer()
                         if workspace.permitted && workspace.available {
                             Button {
-                                Task { if let url = await account.workspaceLink(workspace.id) { openURL(url) } }
+                                Task { if let url = await account.workspaceLink(workspace.handoffTarget) { openURL(url) } }
                             } label: {
-                                if account.openingWorkspace == workspace.id { ProgressView() } else { Text("Open") }
+                                if account.openingWorkspace == workspace.handoffTarget { ProgressView() } else { Text("Open") }
                             }
                             .buttonStyle(SecondaryButtonStyle())
                             .disabled(account.openingWorkspace != nil)

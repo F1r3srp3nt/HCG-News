@@ -71,6 +71,8 @@ final class WorkspaceServiceTests: XCTestCase {
         XCTAssertEqual(directory.workspace("ceo_suite")?.permitted, false)
         XCTAssertEqual(directory.workspace("ceo_suite")?.displayTitle, "Executive Control Center")
         XCTAssertEqual(directory.handoffVersion, 2)
+        XCTAssertEqual(directory.workspace("erp")?.handoffTarget, "/erp")
+        XCTAssertEqual(directory.workspace("ceo_suite")?.handoffTarget, "/control-panel")
         let request = try XCTUnwrap(transport.requests.last)
         XCTAssertEqual(request.url?.host, "beta.hakmicapitalgroup.com")
         XCTAssertEqual(request.path, "/api/public/mobile/workspaces")
@@ -79,9 +81,9 @@ final class WorkspaceServiceTests: XCTestCase {
 
     func testHandoffOnlyOpensHCGLinksAndReportsDenial() async throws {
         let (svc, transport) = try await service { _ in (200, json(["url": "https://beta.hakmicapitalgroup.com/erp#code", "target": "erp"])) }
-        let handoff = try await svc.handoff(target: "erp")
+        let handoff = try await svc.handoff(target: "/erp")
         XCTAssertEqual(handoff.url.absoluteString, "https://beta.hakmicapitalgroup.com/erp#code")
-        XCTAssertEqual(transport.requests.last?.bodyObject["target"] as? String, "erp")
+        XCTAssertEqual(transport.requests.last?.bodyObject["target"] as? String, "/erp")
 
         transport.setHandler { r in r.path == "/auth/v1/token" ? (200, tokenResponse()) : (200, json(["url": "https://evil.example/erp#code"])) }
         do { _ = try await svc.handoff(target: "erp"); XCTFail() } catch { XCTAssertNotEqual(error, .denied) }

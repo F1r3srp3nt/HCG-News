@@ -8,8 +8,23 @@ public struct HCGWorkspaceDirectory: Equatable, Sendable {
     public struct Workspace: Equatable, Sendable, Identifiable {
         public let id: String
         public let title: String?
+        /// The website route the workspace lives at (e.g. `/erp`), as the directory reports it.
+        public let route: String?
         public let permitted: Bool
         public let available: Bool
+
+        /// The handoff target: the website route, as HCG ONE sends it. Falls back to the
+        /// routes HCG ONE uses for the known workspaces.
+        public var handoffTarget: String {
+            if let route, route.hasPrefix("/") { return route }
+            switch id {
+            case "erp": return "/erp"
+            case "ceo_suite": return "/control-panel"
+            case "employee_suite": return "/dashboard"
+            case "client_workspace": return "/client-portal"
+            default: return id
+            }
+        }
 
         public var displayTitle: String {
             if let title, !title.isEmpty { return title }
@@ -87,7 +102,8 @@ public struct HCGWorkspaceService: Sendable {
         } catch { throw Self.map(error) }
         let workspaces = (object["workspaces"] as? [[String: Any]] ?? []).compactMap { w -> HCGWorkspaceDirectory.Workspace? in
             guard let id = w["id"] as? String else { return nil }
-            return .init(id: id, title: w["title"] as? String, permitted: (w["permitted"] as? Bool) ?? false,
+            return .init(id: id, title: w["title"] as? String, route: w["route"] as? String,
+                         permitted: (w["permitted"] as? Bool) ?? false,
                          available: (w["available"] as? Bool) ?? false)
         }
         let integration = object["integration"] as? [String: Any]
@@ -95,7 +111,7 @@ public struct HCGWorkspaceService: Sendable {
                                      handoffVersion: (integration?["version"] as? NSNumber)?.intValue, checkedAt: now)
     }
 
-    /// Requests a single-use link (valid about 60 seconds) for a website route such as `erp`.
+    /// Requests a single-use link (valid about 60 seconds) for a website route such as `/erp`.
     public func handoff(target: String) async throws(HCGWorkspaceError) -> HCGHandoff {
         let client = self.client
         let url = client.configuration.websiteURL.appendingPathComponent("api/public/mobile/handoff")

@@ -1,6 +1,6 @@
 # Packaging and HCG Executable Maker
 
-This note is about **building and packaging**. It is separate from runtime configuration: the app builds and packages identically whether or not any HCG configuration exists, because configuration is installed at runtime (Settings › Advanced) or as an optional, git-ignored bundled file.
+This note is about **building and packaging**. The publication connection is a bundled resource, `HCGNews/Resources/HCGNewsConfiguration.json` (`hcgPlatform`), so Debug, Release and archive builds are all connected. It contains only public values: the shared HCG project URL, its **anon** key (the same one the HCG website ships), the website URL and the publication URL. A configuration imported in Settings › Advanced takes precedence.
 
 ## Compatibility with HCG Executable Maker (Mobile Build Studio)
 
@@ -34,4 +34,5 @@ Both are set in the app target's Debug and Release configurations, and in the UI
 - **Push notifications:** the Push Notifications capability and an `aps-environment` entitlement. Not added: there is no notification service.
 - **Universal links:** an Associated Domains entitlement. Not needed for the custom-scheme sign-in redirect.
 - **Background audio:** the `audio` background mode. Not added: published audio plays in the foreground only.
-- **Bundled configuration:** placing `HCGNews/Configuration/HCGNewsConfiguration.json` bundles it automatically. Do this only for an approved build, and never commit unapproved values.
+- **Bundled configuration:** `HCGNews/Resources/HCGNewsConfiguration.json` is in the synchronised `HCGNews` folder, so it's copied into every build. Never put a secret, service-role key or private value in it: the loader refuses them, and the file is public once the app ships.
+- **Keychain:** the HCG account session uses the item `com.hakmicapitalgroup.hcgnews.account` (this device only, never synchronised). No Keychain Sharing entitlement is needed.

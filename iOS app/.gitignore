@@ -11,8 +11,9 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 
-# Local HCG configuration: install approved values locally, never commit them
-# until the founder has approved the reviewed values for source control.
+# Local, unreviewed HCG configuration overrides. (The bundled platform
+# configuration in HCGNews/HCGNews/Resources/ is committed on purpose: it holds
+# public values only — project URL, anon key, website and publication URLs.)
 HCGNews/HCGNews/Configuration/HCGNewsConfiguration.json
 
 # Never commit credentials
