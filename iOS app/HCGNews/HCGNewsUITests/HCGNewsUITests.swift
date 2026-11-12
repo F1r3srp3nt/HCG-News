@@ -44,16 +44,20 @@ final class HCGNewsUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
-    // MARK: Real build, no configuration
+    // MARK: Real build (bundled HCG platform configuration; reads the live publication)
 
-    func testUnconfiguredBuildShowsNotConnectedWithRouteToAdvancedSettings() {
+    func testRealBuildIsConnectedAndOffersHCGSignIn() {
         let app = launch(fixtures: false)
-        XCTAssertTrue(app.staticTexts["Publication not connected"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.otherElements.firstMatch.waitForExistence(timeout: 10))
+        // The bundled configuration connects the publication: never the "not connected" state.
+        XCTAssertFalse(app.staticTexts["Publication not connected"].waitForExistence(timeout: 8))
         XCTAssertFalse(element(containing: "Fixture", in: app).exists, "no sample content outside fixtures")
-        let advanced = app.buttons["Open Advanced Settings"]
-        XCTAssertTrue(advanced.exists)
-        advanced.tap()
-        XCTAssertTrue(element(containing: "Import Configuration", in: app).waitForExistence(timeout: 5))
+        openSettings(app)
+        XCTAssertTrue(element(containing: "public articles never need an account", in: app).waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Open Newsroom"].exists, "no Newsroom entry without an HCG News role")
+        element(containing: "public articles never need an account", in: app).tap()
+        XCTAssertTrue(element(containing: "Sign in with your HCG account", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.secureTextFields["hcg-signin-password"].exists || app.secureTextFields["Password"].exists)
     }
 
     // MARK: Fixtures

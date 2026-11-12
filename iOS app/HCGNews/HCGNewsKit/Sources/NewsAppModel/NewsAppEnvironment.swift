@@ -166,6 +166,12 @@ public final class NewsAppEnvironment {
         }
     }
 
+    /// The HCG website, when the HCG platform is connected.
+    public var platformWebsiteURL: URL? {
+        if case .ready(let c) = publicationConfiguration { return c.platform?.websiteURL }
+        return nil
+    }
+
     /// Whether to offer the Newsroom. With the HCG platform connected, only to people HCG
     /// gave an HCG News newsroom role in this session.
     public var showsNewsroomEntry: Bool {

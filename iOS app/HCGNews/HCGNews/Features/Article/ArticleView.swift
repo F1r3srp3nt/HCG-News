@@ -267,7 +267,7 @@ struct ArticleHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             KickerLine(editorialType: summary.editorialType, sectionName: summary.section?.name,
-                       restricted: summary.access == .restricted)
+                       restricted: summary.access == .restricted, isDemo: summary.isDemo)
             Text(summary.headline)
                 .font(Typography.headline(.largeTitle, weight: .bold))
                 .foregroundStyle(Palette.primaryText)

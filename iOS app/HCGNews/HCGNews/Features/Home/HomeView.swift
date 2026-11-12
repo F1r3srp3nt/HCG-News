@@ -70,7 +70,9 @@ struct HomeView: View {
 
             if content.isEmpty {
                 MessageStateView(title: "No articles yet",
-                                 message: "The publication has no published articles to show right now.",
+                                 message: env.platformAccount != nil
+                                    ? "The publication returned no published articles. If articles are live on news.hakmicapitalgroup.com, the publication hasn't opened public reading to apps yet; Settings › Advanced › Check Connection shows the details."
+                                    : "The publication has no published articles to show right now.",
                                  systemImage: "newspaper", retry: { await home.reload() })
             }
 

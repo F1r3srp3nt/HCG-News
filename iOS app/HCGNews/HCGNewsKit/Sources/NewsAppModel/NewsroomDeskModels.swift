@@ -193,6 +193,8 @@ public final class NewsroomDeskModel {
         RemoteArticleEditorModel(article: article, desk: self)
     }
 
+    public func dismissMessage() { message = nil }
+
     func noteBackup(_ id: String, present: Bool) {
         if present { unsavedArticleIDs.insert(id) } else { unsavedArticleIDs.remove(id) }
     }
@@ -528,6 +530,17 @@ public final class RemoteArticleEditorModel: Identifiable {
         fields.featuredImageCredit = item.credit ?? ""
     }
 
+    public func moveBlock(_ blockID: UUID, by offset: Int) {
+        guard let i = blocks.firstIndex(where: { $0.id == blockID }) else { return }
+        let j = i + offset
+        guard blocks.indices.contains(j) else { return }
+        blocks.swapAt(i, j)
+    }
+
+    public func removeBlock(_ blockID: UUID) {
+        blocks.removeAll { $0.id == blockID }
+    }
+
     public func insertImage(_ item: NewsroomMedia, at index: Int? = nil) {
         guard bodyMode == .editable, let url = item.url else { return }
         let block = EditableBodyBlock(kind: .image, imageURL: url.absoluteString, altText: item.altText ?? "",
@@ -536,6 +549,39 @@ public final class RemoteArticleEditorModel: Identifiable {
     }
 
     public func clearNotice() { notice = nil }
+
+    /// A native preview of the current (possibly unsaved) state. Never published.
+    public func previewArticle() -> Article {
+        let parser = HTMLContentParser(baseURL: desk.publicationURL)
+        let section = desk.sections.first { $0.id == fields.categoryID }
+        let author = desk.authors.first { $0.id == fields.authorID }
+        let image = LinkPolicy.resolveImage(fields.featuredImageURL, base: desk.publicationURL).map {
+            ArticleImage(url: $0, alt: fields.featuredImageAlt.nilIfBlank, caption: fields.featuredImageCaption.nilIfBlank,
+                         credit: fields.featuredImageCredit.nilIfBlank)
+        }
+        let summary = ArticleSummary(
+            id: ArticleID("newsroom-preview-\(id)"), headline: fields.title.nilIfBlank ?? "Untitled article",
+            standfirst: fields.excerpt.nilIfBlank ?? fields.subtitle.nilIfBlank,
+            section: section.map { SectionRef(id: $0.id, slug: $0.slug, name: $0.name) },
+            editorialType: EditorialType(rawValue: fields.contentType),
+            authors: author.map { [Author(id: $0.id, name: $0.name, title: $0.title,
+                                          disclosures: PublicationDisclosures.disclosures(forAuthorID: $0.id))] } ?? [],
+            publishedAt: nil, image: image, status: nil)
+        let corrections = fields.correctionNotes.nilIfBlank.map { [ArticleCorrection(id: "preview", text: $0, issuedAt: nil)] } ?? []
+        return Article(summary: summary, blocks: parser.parse(fields.body), corrections: corrections)
+    }
+
+    /// The website newsroom's page for this article (for body content the app can't edit).
+    public var websiteEditorURL: URL {
+        desk.publicationURL.appendingPathComponent("admin/articles").appendingPathComponent(id)
+    }
+}
+
+extension String {
+    var nilIfBlank: String? {
+        let t = trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
+    }
 }
 
 /// Administration for Administrators (audit) and Editors-in-Chief (sections).

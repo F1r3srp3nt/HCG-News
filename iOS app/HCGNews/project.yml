@@ -31,6 +31,8 @@ targets:
         product: HCGTransport
       - package: HCGNewsKit
         product: Newsroom
+      - package: HCGNewsKit
+        product: HCGPlatform
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hakmicapitalgroup.hcgnews

@@ -27,7 +27,7 @@ struct RootView: View {
             if newValue == .compact { router.adoptCompact() } else { router.adoptRegular() }
         }
         .fullScreenCover(isPresented: $router.isShowingNewsroom) {
-            NewsroomWorkspace()
+            NewsroomEntry()
                 .environment(env)
                 .environment(container)
                 .environment(router)
@@ -132,10 +132,12 @@ struct RegularRootView: View {
                 Section {
                     Label("Settings & Account", systemImage: "person.crop.circle")
                         .tag(SidebarItem.settings)
-                    Button {
-                        router.isShowingNewsroom = true
-                    } label: {
-                        Label("Newsroom", systemImage: "square.and.pencil")
+                    if env.showsNewsroomEntry {
+                        Button {
+                            router.isShowingNewsroom = true
+                        } label: {
+                            Label("Newsroom", systemImage: "square.and.pencil")
+                        }
                     }
                 }
             }
@@ -212,3 +214,27 @@ struct TestFixtureBanner: View {
     }
 }
 #endif
+
+/// The Newsroom: the HCG newsroom for staff when the HCG platform is connected,
+/// otherwise the local drafting workspace.
+struct NewsroomEntry: View {
+    @Environment(NewsAppEnvironment.self) private var env
+    @Environment(Router.self) private var router
+
+    var body: some View {
+        if let desk = env.newsroomDesk {
+            if env.showsNewsroomEntry {
+                NewsroomDeskView(desk: desk)
+            } else {
+                NavigationStack {
+                    MessageStateView(title: "Newsroom access required",
+                                     message: "The Newsroom is for HCG News staff. Sign in with an HCG account that has an HCG News role; roles are assigned centrally in the HCG ERP.",
+                                     systemImage: "lock")
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { router.isShowingNewsroom = false } } }
+                }
+            }
+        } else {
+            NewsroomWorkspace()
+        }
+    }
+}

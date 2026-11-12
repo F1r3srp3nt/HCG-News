@@ -29,6 +29,8 @@ struct KickerLine: View {
     let sectionName: String?
     var restricted = false
     var download: OfflineEntry?
+    /// The publication's "Demo content" marking.
+    var isDemo = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -36,6 +38,14 @@ struct KickerLine: View {
             if let sectionName {
                 if editorialType != nil { Text("·").foregroundStyle(Palette.silver).accessibilityHidden(true) }
                 Text(sectionName).font(Typography.kicker).foregroundStyle(Palette.secondaryText)
+            }
+            if isDemo {
+                Text("DEMO CONTENT")
+                    .font(.caption2.weight(.semibold)).tracking(0.6)
+                    .foregroundStyle(Palette.secondaryText)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.silver, style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+                    .accessibilityLabel("Demo content")
             }
             if restricted {
                 Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Palette.silver)
@@ -98,7 +108,7 @@ struct LeadArticleCard: View {
             }
             VStack(alignment: .leading, spacing: 10) {
                 KickerLine(editorialType: summary.editorialType, sectionName: summary.section?.name,
-                           restricted: summary.access == .restricted, download: download)
+                           restricted: summary.access == .restricted, download: download, isDemo: summary.isDemo)
                 Text(summary.headline)
                     .font(Typography.headline(wide ? .largeTitle : .title, weight: .bold))
                     .foregroundStyle(Palette.primaryText)
@@ -138,7 +148,7 @@ struct ArticleRow: View {
         layout {
             VStack(alignment: .leading, spacing: 6) {
                 KickerLine(editorialType: summary.editorialType, sectionName: summary.section?.name,
-                           restricted: summary.access == .restricted, download: download)
+                           restricted: summary.access == .restricted, download: download, isDemo: summary.isDemo)
                 Text(summary.headline)
                     .font(Typography.headline(.title3))
                     .foregroundStyle(Palette.primaryText)

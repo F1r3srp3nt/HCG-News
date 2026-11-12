@@ -13,7 +13,11 @@ struct SettingsView: View {
         Form {
             Section {
                 NavigationLink(value: SettingsRoute.account) {
-                    AccountSummaryRow()
+                    if let platformAccount = env.platformAccount {
+                        HCGAccountSummaryRow(account: platformAccount)
+                    } else {
+                        AccountSummaryRow()
+                    }
                 }
             }
             Section("Reading") {
@@ -23,14 +27,18 @@ struct SettingsView: View {
                 NavigationLink("Text and layout", value: SettingsRoute.reading)
                 NavigationLink("Notifications", value: SettingsRoute.notifications)
             }
-            Section("Newsroom") {
-                Button {
-                    router.openNewsroomFromSettings()
-                } label: {
-                    Label("Open Newsroom", systemImage: "square.and.pencil")
+            if env.showsNewsroomEntry {
+                Section("Newsroom") {
+                    Button {
+                        router.openNewsroomFromSettings()
+                    } label: {
+                        Label("Open Newsroom", systemImage: "square.and.pencil")
+                    }
+                    Text(env.newsroomDesk != nil
+                         ? "Write, edit and publish HCG News articles, as your HCG News role allows."
+                         : "Write and keep drafts on this device. Sending to the newsroom needs a newsroom service and HCG access.")
+                        .font(.footnote).foregroundStyle(Palette.secondaryText)
                 }
-                Text("Write and keep drafts on this device. Sending to the newsroom needs a newsroom service and HCG access.")
-                    .font(.footnote).foregroundStyle(Palette.secondaryText)
             }
             Section {
                 NavigationLink(value: SettingsRoute.advanced) {
@@ -45,7 +53,7 @@ struct SettingsView: View {
         }
         .screenBackground()
         .navigationTitle("Settings")
-        .task { await env.account.refresh() }
+        .task { if env.platformAccount == nil { await env.account.refresh() } }
     }
 }
 
@@ -54,7 +62,8 @@ struct SettingsDestinationView: View {
 
     var body: some View {
         switch route {
-        case .account: AccountView()
+        case .account:
+            if let platformAccount = env.platformAccount { HCGAccountView(account: platformAccount) } else { AccountView() }
         case .reading: ReadingSettingsView()
         case .notifications: NotificationSettingsView()
         case .storage: SavedView()
@@ -245,7 +254,9 @@ struct AdvancedSettingsView: View {
         switch state {
         case .awaitingSetup: ("Not configured", [])
         case .invalid(let p): ("Invalid", p)
-        case .ready(let c): ("Configured · \(c.environment) · \(c.apiBaseURL.host ?? "")", [])
+        case .ready(let c):
+            if let p = c.platform { ("Connected to the HCG platform · \(c.environment) · \(p.publicationURL.host ?? "")", []) }
+            else { ("Configured · \(c.environment) · \(c.apiBaseURL.host ?? "")", []) }
         }
     }
 

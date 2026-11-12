@@ -1,0 +1,10 @@
+{
+  "hcgPlatform": {
+    "environment": "production",
+    "projectURL": "https://qggdyzoydveafkmjgkpq.supabase.co",
+    "publicClientKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnZ2R5em95ZHZlYWZrbWpna3BxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1ODQwODQsImV4cCI6MjA5ODE2MDA4NH0.OLbNhV_hvWwS_BqgYVxwU9TZ9P05lX2Fp-ake-hAJ4M",
+    "websiteURL": "https://beta.hakmicapitalgroup.com",
+    "publicationURL": "https://news.hakmicapitalgroup.com",
+    "approvedByFounder": true
+  }
+}

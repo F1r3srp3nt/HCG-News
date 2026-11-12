@@ -43,11 +43,17 @@ struct ContainerRoot: View {
             .environment(\.offlineImageResolver, OfflineImageResolver { url in await offline.localImage(for: url) })
             .task(id: environment.generation) {
                 await environment.saved.load()
-                await environment.account.restore()
+                await environment.restoreAccounts()
             }
             .onChange(of: environment.generation) { _, _ in router.reset() }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await environment.saved.refreshDownloads() } }
+                if phase == .active {
+                    Task {
+                        await environment.saved.refreshDownloads()
+                        // Roles or sessions changed centrally apply on return.
+                        await environment.platformAccount?.refreshIfStale()
+                    }
+                }
             }
     }
 }
@@ -79,8 +85,9 @@ enum AppBootstrap {
         "HCGNews-iOS/\(appVersion) (\(UIDevice.current.systemName) \(UIDevice.current.systemVersion))"
     }
 
-    /// Optional bundled configuration (`HCGNews/Configuration/HCGNewsConfiguration.json`).
-    /// The repository ships none. Imported configurations take precedence.
+    /// Bundled configuration (`HCGNews/Resources/HCGNewsConfiguration.json`): the real HCG
+    /// platform connection, so Release and archive builds are connected. It contains only
+    /// public values. An imported configuration takes precedence.
     static func bundledConfiguration() -> Data? {
         guard let url = Bundle.main.url(forResource: "HCGNewsConfiguration", withExtension: "json") else { return nil }
         return try? Data(contentsOf: url)
@@ -96,7 +103,8 @@ enum AppBootstrap {
                                         bundledConfiguration: bundledConfiguration(), redirectScheme: callbackScheme)
         let platform = PlatformServices(transport: URLSessionTransport(), browser: SystemBrowserAuthenticator(),
                                         sessionStore: KeychainSessionStore(), userAgent: userAgent,
-                                        redirectScheme: callbackScheme, appVersion: appVersion)
+                                        redirectScheme: callbackScheme, appVersion: appVersion,
+                                        accountStore: KeychainSessionStore(service: "com.hakmicapitalgroup.hcgnews.account"))
         return await AppContainer(platform: platform, stores: stores)
     }
 }
