@@ -267,12 +267,16 @@ public struct ArticleSummary: Hashable, Codable, Sendable, Identifiable {
     /// Opaque content revision from the backend (e.g. an ETag or revision number).
     /// Used to detect when a downloaded copy is out of date. Never invented.
     public let revision: String?
+    /// The publication marks this as demonstration content ("Demo content" on the web).
+    /// Shown with that label and never used as breaking news.
+    public let isDemo: Bool
 
     public init(id: ArticleID, slug: String? = nil, canonicalURL: URL? = nil, headline: String,
                 standfirst: String? = nil, section: SectionRef? = nil, editorialType: EditorialType? = nil,
                 authors: [Author] = [], publishedAt: Date?, updatedAt: Date? = nil,
                 image: ArticleImage? = nil, isFeatured: Bool = false, breaking: BreakingFlag? = nil,
-                access: AccessLevel = .public, status: String? = "published", revision: String? = nil) {
+                access: AccessLevel = .public, status: String? = "published", revision: String? = nil,
+                isDemo: Bool = false) {
         self.id = id
         self.slug = slug
         self.canonicalURL = canonicalURL
@@ -289,11 +293,12 @@ public struct ArticleSummary: Hashable, Codable, Sendable, Identifiable {
         self.access = access
         self.status = status
         self.revision = revision
+        self.isDemo = isDemo
     }
 
     enum CodingKeys: String, CodingKey {
         case id, slug, canonicalURL = "canonicalUrl", headline, standfirst, section, editorialType
-        case authors, publishedAt, updatedAt, image, isFeatured, breaking, access, status, revision
+        case authors, publishedAt, updatedAt, image, isFeatured, breaking, access, status, revision, isDemo
     }
 
     public init(from decoder: Decoder) throws {
@@ -322,6 +327,7 @@ public struct ArticleSummary: Hashable, Codable, Sendable, Identifiable {
         } else {
             revision = nil
         }
+        isDemo = (try? c.decodeIfPresent(Bool.self, forKey: .isDemo)) ?? false
     }
 
     /// The best available marker for "this content changed": the explicit revision,

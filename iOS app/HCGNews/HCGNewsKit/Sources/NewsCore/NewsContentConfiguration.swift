@@ -11,6 +11,17 @@ public struct NewsContentConfiguration: Equatable, Sendable {
     /// Contract versions this build can decode.
     public static let supportedContractVersions: Set<String> = ["1"]
 
+    /// Where the publication's content comes from.
+    public enum Backend: Equatable, Sendable {
+        /// The proposed HCG News content API (docs/HCG-NEWS-CONTENT-API-PROPOSAL.md).
+        case contentAPI
+        /// The real HCG platform: the publication's own tables, read through the shared
+        /// HCG project with the public client key and row-level security.
+        case hcgPlatform(HCGPlatformConfiguration)
+    }
+
+    public let backend: Backend
+
     public let contractVersion: String
     public let environment: String
     /// Base of the content API, e.g. a versioned path on an HCG host (to be confirmed).
@@ -24,12 +35,29 @@ public struct NewsContentConfiguration: Equatable, Sendable {
 
     public init(contractVersion: String, environment: String, apiBaseURL: URL, publicationURL: URL,
                 approvedByFounder: Bool, newsroomAPIBaseURL: URL? = nil) {
+        self.backend = .contentAPI
         self.contractVersion = contractVersion
         self.environment = environment
         self.apiBaseURL = apiBaseURL
         self.publicationURL = publicationURL
         self.approvedByFounder = approvedByFounder
         self.newsroomAPIBaseURL = newsroomAPIBaseURL
+    }
+
+    /// A configuration for the real HCG platform.
+    public init(platform: HCGPlatformConfiguration) {
+        backend = .hcgPlatform(platform)
+        contractVersion = "hcg-platform-1"
+        environment = platform.environment
+        apiBaseURL = platform.restURL
+        publicationURL = platform.publicationURL
+        approvedByFounder = true
+        newsroomAPIBaseURL = nil
+    }
+
+    public var platform: HCGPlatformConfiguration? {
+        if case .hcgPlatform(let p) = backend { return p }
+        return nil
     }
 }
 
@@ -51,7 +79,16 @@ public enum NewsConfigurationLoader {
             let approvedByFounder: Bool?
             let newsroomAPIBaseURL: String?
         }
+        struct Platform: Decodable {
+            let environment: String?
+            let projectURL: String?
+            let publicClientKey: String?
+            let websiteURL: String?
+            let publicationURL: String?
+            let approvedByFounder: Bool?
+        }
         let content: Content?
+        let hcgPlatform: Platform?
     }
 
     /// Validates a configuration file's data. `nil` data means no file is installed.
@@ -63,6 +100,17 @@ public enum NewsConfigurationLoader {
         }
         guard let file = try? JSONDecoder().decode(File.self, from: data) else {
             return .invalid(["The configuration file is not valid JSON in the expected shape."])
+        }
+        if let platform = file.hcgPlatform {
+            var (configuration, problems) = HCGPlatformConfiguration.validate(
+                environment: platform.environment, projectURL: platform.projectURL,
+                publicClientKey: platform.publicClientKey, websiteURL: platform.websiteURL,
+                publicationURL: platform.publicationURL)
+            if platform.approvedByFounder != true {
+                problems.append("The configuration has not been approved by the founder (approvedByFounder is not true).")
+            }
+            guard problems.isEmpty, let configuration else { return .invalid(problems) }
+            return .ready(NewsContentConfiguration(platform: configuration))
         }
         guard let content = file.content else { return .awaitingSetup }
 

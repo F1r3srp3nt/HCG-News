@@ -38,6 +38,16 @@ public enum HCGJSON {
         let plain = ISO8601DateFormatter()
         plain.formatOptions = [.withInternetDateTime]
         if let date = plain.date(from: trimmed) { return date }
+        // Postgres timestamptz with microseconds ("…T10:15:00.123456+00:00"): keep milliseconds.
+        if let dot = trimmed.firstIndex(of: "."), trimmed.distance(from: trimmed.startIndex, to: dot) >= 19 {
+            let fractionStart = trimmed.index(after: dot)
+            let digits = trimmed[fractionStart...].prefix(while: { $0.isNumber })
+            if digits.count > 3 {
+                let rest = trimmed[digits.endIndex...]
+                let normalised = String(trimmed[..<fractionStart]) + digits.prefix(3) + rest
+                if let date = parseDate(normalised) { return date }
+            }
+        }
         // Postgres-style "2026-11-03 10:15:00+00" / "+00:00" (space separator).
         if trimmed.count > 10, trimmed[trimmed.index(trimmed.startIndex, offsetBy: 10)] == " " {
             var normalised = trimmed
@@ -93,6 +103,11 @@ public enum SecretGuard {
     /// If `token` is a JWT, returns its `role` claim (unverified; used only to
     /// refuse obviously privileged keys such as a Supabase `service_role` key).
     public static func jwtRoleClaim(_ token: String) -> String? {
+        jwtClaims(token)?["role"] as? String
+    }
+
+    /// The (unverified) claims of a JWT, or nil if `token` is not a JWT.
+    public static func jwtClaims(_ token: String) -> [String: Any]? {
         let parts = token.split(separator: ".")
         guard parts.count == 3 else { return nil }
         var payload = String(parts[1])
@@ -102,7 +117,7 @@ public enum SecretGuard {
         guard let data = Data(base64Encoded: payload),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return nil }
-        return object["role"] as? String
+        return object
     }
 }
 
