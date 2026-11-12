@@ -1,6 +1,10 @@
 # Backend handoff — public reading for the HCG News apps
 
-**Status:** needed only if the verification script says so. Nothing has been deployed. Deployment is manual and is yours to decide.
+**Status (checked live on 12 November 2026):**
+- **Step 1 isn't needed.** Published articles are already readable anonymously; drafts and scheduled articles aren't.
+- **Step 2 is optional hardening.** `created_by`, `seo_title` and `view_count` are readable with the public key.
+
+Nothing has been deployed. Deployment is manual and is yours to decide.
 
 ## Why
 

@@ -75,11 +75,23 @@ for col in created_by seo_title view_count; do
   else pass "editorial column '$col' is not readable anonymously (HTTP $S)"; fi
 done
 
-for t in news_article_versions news_audit news_media news_newsletter_subscribers news_site_settings; do
+for t in news_article_versions news_audit news_media news_newsletter_subscribers; do
   R="$(get "/rest/v1/$t?select=*&limit=1")"
   S="$(printf '%s' "$R" | status_of)"; N="$(printf '%s' "$R" | count_rows)"
-  [ "$N" -le 0 ] && pass "$t is not readable anonymously (HTTP $S)" || fail "$t returns rows to anonymous requests"
+  [ "$N" -le 0 ] && pass "$t is not readable anonymously (HTTP $S, no rows)" || fail "$t returns rows to anonymous requests"
 done
+
+# Site settings (site name, tagline, logo, public contact email) are public by design.
+R="$(get "/rest/v1/news_site_settings?select=*&limit=1")"
+COLS="$(printf '%s' "$R" | python3 -c 'import sys,json
+s,b=sys.stdin.read().split("\t",1)
+try:
+  d=json.loads(b); print(",".join(sorted(d[0].keys())) if isinstance(d,list) and d else "")
+except Exception: print("")')"
+EXPECTED="contact_email,id,logo_url,site_name,site_url,subtitle,tagline,updated_at"
+if [ -z "$COLS" ]; then pass "news_site_settings is not readable anonymously"
+elif [ "$COLS" = "$EXPECTED" ]; then pass "news_site_settings exposes only the public site settings ($COLS)"
+else warn "news_site_settings is readable anonymously with columns: $COLS — check none are private"; fi
 
 R="$(get "/rest/v1/news_categories?select=id,slug&is_visible=eq.true&limit=50")"
 N="$(printf '%s' "$R" | count_rows)"
@@ -89,7 +101,7 @@ S="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "apikey: $ANON" -H "Auth
      -H 'Content-Type: application/json' -d '{"prefix":"","limit":1}' "$PROJECT/storage/v1/object/list/hcg-news-media" || echo 000)"
 R="$(curl -sS -X POST -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H 'Content-Type: application/json' \
      -d '{"prefix":"","limit":1}' "$PROJECT/storage/v1/object/list/hcg-news-media" 2>/dev/null || true)"
-if [ "$S" = "200" ] && [ "$R" != "[]" ]; then fail "the media bucket can be listed anonymously"; else pass "the media bucket can't be listed anonymously (HTTP $S)"; fi
+if [ "$S" = "200" ] && [ "$R" != "[]" ]; then fail "the media bucket can be listed anonymously"; else pass "the media bucket can't be listed anonymously (HTTP $S, nothing listed)"; fi
 
 if [ "$ACCOUNT" -eq 1 ]; then
   echo

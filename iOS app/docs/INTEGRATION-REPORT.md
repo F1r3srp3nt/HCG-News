@@ -97,15 +97,42 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 | SwiftUI layer | Syntax-checked (`swiftc -parse`), plus an independent read-only compile review (§7): one compile error and six other issues, all fixed. **Not compiled**: no Mac or iOS SDK here. |
 | Failed access re-checks keep the confirmed access; a completed "no role" check removes it | `testRecheckKeepsConfirmedAccessUntilHCGSaysOtherwise` |
 
+### Live anonymous check (12 November 2026, 05:40 UTC, read-only)
+
+Run with your go-ahead: `tools/verify-hcg-news-access.sh`, anonymous part only. **10 passed, 0 failed, 3 notes.**
+
+- **Pass:**
+  - published articles are readable;
+  - drafts, in-review, approved and archived articles are not;
+  - scheduled articles are not, before their time;
+  - versions, audit, media records and newsletter subscribers return nothing;
+  - site settings hold only public values;
+  - 10 visible sections are readable;
+  - the media bucket can't be listed.
+- **Note:** `created_by`, `seo_title` and `view_count` are readable on published rows. The app never requests them. Optional step 2 of [`../backend/HCG-NEWS-PUBLIC-READ.md`](../backend/HCG-NEWS-PUBLIC-READ.md) would close this (read its caution first).
+- **The app's exact queries all succeeded against the live tables:**
+  - the list query, with section and author embeds;
+  - the detail query (body, sources, corrections);
+  - the search query;
+  - the sections query.
+
+  They returned 7 published articles: 1 demo article, 3 breaking, 6 featured, all with a section and an author. Images are on the HCG project's storage host, and timestamps have microseconds (parsed).
+- **Body editing on the live articles:**
+  - 4 of 7 are editable losslessly in the app.
+  - 3 are read-only in the app because they use underline (`<u>`). They read normally, and their bodies are never touched by a save.
+  - All 7 render with no "unsupported content" notices.
+- Two published articles still have `draft-<uuid>` slugs. That was already known; they still work.
+- **No public-read backend change is needed.**
+
 ### Not verified (and why)
 
-- **Live requests against HCG.** The automated anonymous check against the live project was blocked by this environment's safety controls, so nothing in this session read from or wrote to the live publication. Run `tools/verify-hcg-news-access.sh` (§5).
+- **Signed-in and write checks against HCG.** Not run here (they need your password). Run `tools/verify-hcg-news-access.sh --account`, and `--write-tests` with a staff account (§5).
 - **Writes with a real staff account.** Not done, by design: test content only, and never real stories. The script's `--write-tests` mode creates one labelled test draft, checks the revision guard, then deletes it.
 - **Compiling and running on a simulator or device**, including the 14 UI tests (one was rewritten for the connected build).
 
 ## 5. What you need to do
 
-1. **Run the access check** (2 minutes):
+1. **Run the signed-in access check.** The anonymous part already passed (§4):
    ```bash
    cd "iOS app/tools" && ./verify-hcg-news-access.sh
    ```
@@ -114,7 +141,7 @@ These rules decide **what the app offers**. Authorisation is the server's: every
    ./verify-hcg-news-access.sh --account
    ```
    And `--write-tests` with a staff account. It creates one labelled test draft and deletes it.
-2. **If "no published articles readable anonymously" fails**, review and apply [`../backend/HCG-NEWS-PUBLIC-READ.md`](../backend/HCG-NEWS-PUBLIC-READ.md) (SQL included, with a rollback). Deployment is manual.
+2. **Optional:** to stop `created_by`, `seo_title` and `view_count` being readable with the public key, review step 2 of [`../backend/HCG-NEWS-PUBLIC-READ.md`](../backend/HCG-NEWS-PUBLIC-READ.md). Deployment is manual. Public reading itself needs no backend change.
 3. **On a Mac:** build and run as in [BUILD-AND-TEST.md](BUILD-AND-TEST.md), then work through the new sections of [ACCEPTANCE-CHECKLIST.md](ACCEPTANCE-CHECKLIST.md) with:
    - an ordinary account;
    - your owner account (its access comes from HCG App Access; nothing is hard-coded);
@@ -125,7 +152,8 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 
 | Item | Owner | Blocking? |
 |---|---|---|
-| Anonymous read policy and column privileges for published articles | HCG backend | Only if the check fails |
+| Column privileges for `anon` (`created_by`, `seo_title`, `view_count` currently readable) | HCG backend | No. Public reading already works; this is optional hardening. |
+| Underline (`<u>`) in the app's body editor (3 of 7 live articles are read-only in the app because of it) | App | No. Those bodies stay untouched; a later app update can add underline. |
 | Author disclosures stored as data (an author field or table) rather than website code | News website | No. The app mirrors the current text. |
 | A native OAuth/PKCE client for HCG News (redirect `com.hakmicapitalgroup.hcgnews:/oauth/callback`) | Central HCG | No. The password grant is HCG's documented sister-app contract. The OAuth path stays in the app for when a client is registered. |
 | Whether `updated_at` is maintained on every save | HCG backend | The app sets it on each save; `--write-tests` confirms stale saves are refused |
