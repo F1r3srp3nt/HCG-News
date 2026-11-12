@@ -84,8 +84,8 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 
 | Check | Result |
 |---|---|
-| `swift build` + `swift test` of HCGNewsKit (Swift 6.1, Linux) | **181 tests, 0 failures.** 46 are new: HCGPlatform 37 and NewsAppModel platform tests 9. |
-| Anonymous requests never carry a person's token; only published, due rows and reader columns are requested | `PublicationContentTests` |
+| `swift build` + `swift test` of HCGNewsKit (Swift 6.1, Linux) | **182 tests, 0 failures.** 47 are new: HCGPlatform 38 and NewsAppModel platform tests 9. |
+| Anonymous requests never carry a person's token; only published, due rows and reader columns are requested; Check Connection reports "no articles readable" instead of "connected" | `PublicationContentTests` |
 | Drafts and scheduled rows are dropped even if the server sends them | `testDraftsAndScheduledRowsAreDroppedEvenIfTheServerSendsThem` |
 | Privileged keys, other projects and unapproved files are refused | `PlatformConfigurationTests` |
 | The password is never stored; refresh is single-flight; a revoked refresh token signs out; offline keeps a valid session; logout is local-scope and always clears the Keychain | `HCGAccountSessionTests` |

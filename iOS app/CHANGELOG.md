@@ -31,7 +31,7 @@ Connected to the real publication and HCG identity, using the contracts the HCG 
 - `backend/`: a public-read SQL handoff, applied only if the check fails.
 
 **Tests**
-- 181 package tests (46 new).
+- 182 package tests (47 new).
 - The real-build UI test now expects a connected app.
 
 ## Unreleased — app icon (version unchanged: 0.2.0 (2))

@@ -39,13 +39,16 @@ public struct PublicationContentService: NewsService {
         NewsCapabilities(serverSearch: true, serverSearchFilters: [.section, .type], fullContent: true)
     }
 
-    /// A real round trip: reads one published article id and the visible sections.
+    /// A real round trip: reads one published article id. Zero readable articles is
+    /// reported (`.noPublicContent`) rather than called "connected".
     public func verifyConnection() async throws -> NewsCapabilities {
+        let rows: [[String: Any]]
         do {
-            _ = try await client.rows(client.restRequest("news_articles", query: publishedFilter() + [
+            rows = try await client.rows(client.restRequest("news_articles", query: publishedFilter() + [
                 URLQueryItem(name: "select", value: "id"), URLQueryItem(name: "limit", value: "1"),
             ], token: nil))
         } catch let error as PlatformError { throw Self.map(error) }
+        if rows.isEmpty { throw NewsServiceError.noPublicContent }
         return try await capabilities()
     }
 

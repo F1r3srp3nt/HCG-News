@@ -22,6 +22,9 @@ public enum NewsServiceError: Error, Equatable, Sendable {
     /// The server's contract version is not one this app understands.
     case unsupportedContractVersion(String)
     case server(status: Int)
+    /// The publication answered, but no published article is readable without signing in
+    /// (typically: public reading isn't enabled for apps). Only reported by connection checks.
+    case noPublicContent
     case other(String)
 }
 

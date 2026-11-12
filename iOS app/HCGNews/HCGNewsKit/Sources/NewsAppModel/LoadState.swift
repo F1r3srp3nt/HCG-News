@@ -71,6 +71,10 @@ public struct UserFacingError: Equatable, Sendable {
             self.init(.contract, "This version can't read the publication",
                       "The publication's data did not match what this version of the app expects. An app update may be required.",
                       "exclamationmark.triangle", retry: true)
+        case .noPublicContent:
+            self.init(.unavailable, "Connected, but no articles are readable",
+                      "The publication answered, but returned no published articles to the app. If articles are live on news.hakmicapitalgroup.com, public reading for apps isn't enabled yet. Run the access check described in the integration report.",
+                      "eye.slash", retry: true)
         case .other:
             self.init(.other, "Something went wrong",
                       "The content could not be loaded. Try again.", "exclamationmark.triangle", retry: true)

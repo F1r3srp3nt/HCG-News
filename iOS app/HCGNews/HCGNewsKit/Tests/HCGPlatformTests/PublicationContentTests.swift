@@ -170,6 +170,14 @@ final class PublicationContentTests: XCTestCase {
         catch { XCTFail() }
     }
 
+    func testConnectionCheckReportsWhenNoArticleIsReadable() async throws {
+        let empty = FakeTransport { _ in (200, json([])) }
+        do { _ = try await service(empty).verifyConnection(); XCTFail("empty publication reported as connected") }
+        catch let e as NewsServiceError { XCTAssertEqual(e, .noPublicContent) }
+        let ok = FakeTransport { _ in (200, json([["id": "x"]])) }
+        _ = try await service(ok).verifyConnection()
+    }
+
     func testHomeAsksForFeaturedAndNonDemoBreaking() async throws {
         let transport = FakeTransport { _ in (200, json([])) }
         _ = try await service(transport).home()
