@@ -31,8 +31,19 @@ Connected to the real publication and HCG identity, using the contracts the HCG 
 - `backend/`: a public-read SQL handoff, applied only if the check fails.
 
 **Tests**
-- 182 package tests (47 new).
+- 183 package tests (48 new).
 - The real-build UI test now expects a connected app.
+
+**Compile review (independent, read-only; the SwiftUI layer can't be compiled here)**
+
+One certain compile error and six other issues were found. All seven were fixed:
+1. **Compile error:** `SettingsDestinationView` used `env` without declaring it.
+2. **Newsroom closed on every access re-check.** While re-checking, the access in effect was "none", so editors were thrown out each time the app returned to the foreground. The last confirmed access now stays in effect until HCG completes a check that says otherwise. A failed re-check is shown, and doesn't remove access. There's a test for this.
+3. The Administration sheet rebuilt its model on every re-render, blanking its lists. The model is now held in `@State`.
+4. A conflict found while publishing could be lost behind the closing Publish sheet. The publication now runs after the sheet has closed.
+5. Close in "Local Drafts on This Device" closed the whole Newsroom. It now returns to the newsroom.
+6. Whole-row taps in forms could trigger buttons: "Discard" (now confirmed), "From Headline", "Choose Image…", and the password-reset link. These buttons are now borderless, and sign-in is no longer inside a form row.
+7. Picking the same photo twice did nothing. The picker now resets.
 
 ## Unreleased — app icon (version unchanged: 0.2.0 (2))
 

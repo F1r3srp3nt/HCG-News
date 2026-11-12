@@ -18,7 +18,7 @@ The app consumes the publication's content and HCG's central identity. It has no
 | | |
 |---|---|
 | Project | [`HCGNews/HCGNews.xcodeproj`](HCGNews/HCGNews.xcodeproj) (Xcode 16+, iOS 17+) |
-| Core package | [`HCGNews/HCGNewsKit`](HCGNews/HCGNewsKit). Foundation only; 182 tests, passing on Linux (Swift 6.1). |
+| Core package | [`HCGNews/HCGNewsKit`](HCGNews/HCGNewsKit). Foundation only; 183 tests, passing on Linux (Swift 6.1). |
 | **Real integration: what, how, verification, your steps** | [docs/INTEGRATION-REPORT.md](docs/INTEGRATION-REPORT.md) |
 | Access check (run it yourself) · backend handoff if needed | [tools/verify-hcg-news-access.sh](tools/verify-hcg-news-access.sh) · [backend/HCG-NEWS-PUBLIC-READ.md](backend/HCG-NEWS-PUBLIC-READ.md) |
 | Build and test | [docs/BUILD-AND-TEST.md](docs/BUILD-AND-TEST.md) |

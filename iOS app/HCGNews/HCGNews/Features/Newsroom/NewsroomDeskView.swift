@@ -29,15 +29,16 @@ struct NewsroomDeskView: View {
         }
         .task { if desk.phase == .idle { await desk.load() } }
         .onChange(of: env.platformAccount?.currentPermissions.isStaff ?? false) { _, isStaff in
-            // Access removed centrally: close the newsroom.
+            // Access removed centrally (a completed check said no role) or signed out: close.
             if !isStaff { router.isShowingNewsroom = false }
         }
         .sheet(isPresented: $showingAdmin) {
-            NavigationStack { NewsroomAdminView(model: NewsroomAdminDeskModel(desk: desk)) }
+            NavigationStack { NewsroomAdminView(desk: desk) }
                 .environment(env).hcgThemed()
         }
         .sheet(isPresented: $showingLocalDrafts) {
-            NewsroomWorkspace().environment(env).environment(router).hcgThemed()
+            NewsroomWorkspace(onClose: { showingLocalDrafts = false })
+                .environment(env).environment(router).hcgThemed()
         }
         .alert("Newsroom", isPresented: Binding(get: { desk.message != nil }, set: { if !$0 { desk.dismissMessage() } })) {
             Button("OK") { desk.dismissMessage() }
@@ -197,7 +198,10 @@ struct RemoteArticleEditorView: View {
     @State private var mediaTarget: MediaTarget?
     @State private var pendingStatus: EditorialStatus?
     @State private var showingPublish = false
-    @State private var confirmDiscardMine = false
+    @State private var confirmDiscardBackup = false
+    /// A confirmed publication, run after the Publish sheet has fully closed (so a
+    /// resulting conflict sheet can present). Outer nil: nothing pending; inner nil: now.
+    @State private var pendingPublication: Date??
 
     enum MediaTarget: Identifiable, Equatable {
         case cover
@@ -229,6 +233,7 @@ struct RemoteArticleEditorView: View {
                         .font(.body.monospaced())
                     Button("From Headline") { editor.fields.slug = NewsroomArticleFields.slugify(editor.fields.title) }
                         .font(.footnote)
+                        .buttonStyle(.borderless)
                 }
             }
             Section("Classification") {
@@ -300,8 +305,15 @@ struct RemoteArticleEditorView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingPublish) {
-            NavigationStack { PublishSheet(editor: editor) }
+        .sheet(isPresented: $showingPublish, onDismiss: {
+            guard let scheduled = pendingPublication else { return }
+            pendingPublication = nil
+            Task { await editor.change(to: .published, scheduleAt: scheduled) }
+        }) {
+            NavigationStack { PublishSheet(editor: editor) { pendingPublication = .some($0) } }
+        }
+        .confirmationDialog("Discard the unsaved edits stored on this device?", isPresented: $confirmDiscardBackup, titleVisibility: .visible) {
+            Button("Discard Edits", role: .destructive) { Task { await editor.discardBackup() } }
         }
         .sheet(isPresented: Binding(get: { if case .conflict = editor.phase { return true } else { return false } }, set: { _ in })) {
             if case .conflict(let server) = editor.phase {
@@ -361,7 +373,7 @@ struct RemoteArticleEditorView: View {
                 HStack {
                     Text(notice).font(.footnote)
                     Spacer()
-                    Button("Dismiss") { editor.clearNotice() }.font(.footnote)
+                    Button("Dismiss") { editor.clearNotice() }.font(.footnote).buttonStyle(.borderless)
                 }
             }
             if let backup = editor.recoverableBackup {
@@ -370,7 +382,7 @@ struct RemoteArticleEditorView: View {
                         .font(.footnote.weight(.semibold))
                     HStack {
                         Button("Restore Edits") { editor.recoverBackup() }.buttonStyle(SecondaryButtonStyle())
-                        Button("Discard", role: .destructive) { Task { await editor.discardBackup() } }
+                        Button("Discard", role: .destructive) { confirmDiscardBackup = true }.buttonStyle(.borderless)
                     }
                 }
             }
@@ -515,7 +527,7 @@ struct BodyBlockEditor: View {
                     AsyncImage(url: url) { $0.resizable().aspectRatio(contentMode: .fit) } placeholder: { ProgressView() }
                         .frame(maxHeight: 160)
                 }
-                Button("Choose Image…", action: chooseImage).font(.footnote)
+                Button("Choose Image…", action: chooseImage).font(.footnote).buttonStyle(.borderless)
                 TextField("Alt text (required)", text: $block.altText, axis: .vertical)
                 TextField("Caption", text: $block.caption, axis: .vertical)
                 TextField("Credit", text: $block.credit)
@@ -535,6 +547,8 @@ struct BodyBlockEditor: View {
 
 struct PublishSheet: View {
     let editor: RemoteArticleEditorModel
+    /// Called with nil (publish now) or the scheduled time; the parent runs it once the sheet closes.
+    let onConfirm: (Date?) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var schedule = false
     @State private var date = Date().addingTimeInterval(3600)
@@ -570,10 +584,8 @@ struct PublishSheet: View {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
                 Button(schedule ? "Schedule" : "Publish") {
-                    Task {
-                        await editor.change(to: .published, scheduleAt: schedule ? date : nil)
-                        dismiss()
-                    }
+                    onConfirm(schedule ? date : nil)
+                    dismiss()
                 }
                 .disabled(!problems.isEmpty || !confirmed)
             }
@@ -745,10 +757,16 @@ struct MediaLibraryPicker: View {
                 guard let type, let mime = type.preferredMIMEType,
                       let data = try? await item.loadTransferable(type: Data.self) else {
                     loadError = "This photo's format can't be uploaded. Use JPEG, PNG, WebP, GIF or AVIF."
+                    pickerItem = nil
                     return
                 }
-                if let problem = NewsroomRepository.uploadProblem(mimeType: mime, byteCount: data.count) { loadError = problem; return }
+                if let problem = NewsroomRepository.uploadProblem(mimeType: mime, byteCount: data.count) {
+                    loadError = problem
+                    pickerItem = nil
+                    return
+                }
                 pending = (data, mime, type.preferredFilenameExtension ?? "jpg")
+                pickerItem = nil
             }
         }
     }
@@ -757,9 +775,13 @@ struct MediaLibraryPicker: View {
 // MARK: - Administration
 
 struct NewsroomAdminView: View {
-    let model: NewsroomAdminDeskModel
+    @State private var model: NewsroomAdminDeskModel
     @Environment(\.dismiss) private var dismiss
     @State private var newSection = ""
+
+    init(desk: NewsroomDeskModel) {
+        _model = State(initialValue: NewsroomAdminDeskModel(desk: desk))
+    }
 
     var body: some View {
         List {

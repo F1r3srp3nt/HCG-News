@@ -25,6 +25,11 @@ public final class PlatformAccountModel {
     /// The outcome of the last sign-out, worded exactly.
     public private(set) var lastMessage: String?
     public private(set) var openingWorkspace: String?
+    /// True while access is being re-checked. The last confirmed access stays in effect
+    /// meanwhile, so the Newsroom doesn't close on every check.
+    public private(set) var isCheckingAccess = false
+    /// Why the latest re-check didn't complete (the previous confirmed access stays).
+    public private(set) var accessCheckProblem: String?
     public private(set) var workspaceError: String?
 
     @ObservationIgnored public let session: HCGAccountSession
@@ -73,6 +78,7 @@ public final class PlatformAccountModel {
     }
 
     private func clearAccountData() {
+        accessCheckProblem = nil
         permissions = .notChecked
         workspaces = .notChecked
         lastAccessCheck = nil
@@ -123,14 +129,16 @@ public final class PlatformAccountModel {
     /// Re-reads identity, HCG News roles and HCG workspaces from HCG.
     public func refreshAccess() async {
         guard let user else { return }
-        permissions = .checking
+        isCheckingAccess = true
+        defer { isCheckingAccess = false }
+        if permissions.value == nil { permissions = .checking }
         if workspaces.value == nil { workspaces = .checking }
         let verified = await session.verifyWithServer()
         if case .failure(let error) = verified {
-            if !isSignedIn { return } // ended: state already updated through the observer
+            if !isSignedIn { clearAccountData(); return } // session ended
             if error == .offline || error == .timedOut {
-                permissions = .failed("You're offline, so your HCG News access couldn't be checked. Newsroom tools stay closed until it can be.")
-                workspaces = .failed(error.message)
+                fail("You're offline, so your HCG News access couldn't be checked.")
+                if workspaces.value == nil { workspaces = .failed(error.message) }
                 return
             }
         }
@@ -139,16 +147,30 @@ public final class PlatformAccountModel {
         do {
             let result = try await roles.permissions(userID: current.id)
             permissions = .ready(result)
+            accessCheckProblem = nil
             lastAccessCheck = Date()
             await log?.record(.account, "HCG News access checked: \(result.orderedRoles.map(\.title).joined(separator: ", ").ifEmpty("no newsroom role"))")
         } catch let error as PlatformError {
-            permissions = .failed("HCG News access couldn't be checked: \(error.message)")
-            if error == .unauthorized { state = await session.state }
+            if error == .unauthorized {
+                state = await session.state
+                if !isSignedIn { clearAccountData(); return }
+            }
+            fail("HCG News access couldn't be checked: \(error.message)")
         } catch {
-            permissions = .failed("HCG News access couldn't be checked.")
+            fail("HCG News access couldn't be checked.")
         }
         do { workspaces = .ready(try await workspaceService.directory()) }
-        catch { workspaces = .failed(error.message) }
+        catch { if workspaces.value == nil { workspaces = .failed(error.message) } }
+    }
+
+    /// A failed re-check keeps the last access HCG confirmed in this session (the server
+    /// still authorises every action); with none confirmed yet, the check has failed.
+    private func fail(_ message: String) {
+        if permissions.value != nil {
+            accessCheckProblem = message + " Showing the access HCG confirmed earlier."
+        } else {
+            permissions = .failed(message + " Newsroom tools stay closed until it can be.")
+        }
     }
 
     /// Called when the app returns to the foreground, so changes made centrally (roles

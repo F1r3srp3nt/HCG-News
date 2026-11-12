@@ -59,6 +59,7 @@ struct SettingsView: View {
 
 struct SettingsDestinationView: View {
     let route: SettingsRoute
+    @Environment(NewsAppEnvironment.self) private var env
 
     var body: some View {
         switch route {

@@ -37,7 +37,7 @@ HCGNews/
                                  NewsroomService (proposed API client), NewsroomGate
     NewsAppModel                 ConfigurationStore, AppContainer/NewsAppEnvironment, screen models,
                                  Account/Connection models, Newsroom/Editor/Admin models, event log, diagnostics
-    Tests/                       182 XCTest cases
+    Tests/                       183 XCTest cases
 ```
 
 ## 2. Composition and configuration

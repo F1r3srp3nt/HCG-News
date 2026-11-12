@@ -72,6 +72,7 @@ struct HCGSignInView: View {
             if let website = env.platformWebsiteURL {
                 Link("Forgot your password? Reset it on the HCG website", destination: website.appendingPathComponent("auth"))
                     .font(.footnote)
+                    .buttonStyle(.borderless)
             }
             Text("HCG decides what your account can do. Signing in never grants newsroom access by itself.")
                 .font(.caption).foregroundStyle(Palette.secondaryText).multilineTextAlignment(.center)
@@ -101,6 +102,36 @@ struct HCGAccountView: View {
     @State private var confirmSignOut = false
 
     var body: some View {
+        Group {
+            if account.user == nil {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        HCGSignInView(account: account)
+                        if let message = account.lastMessage {
+                            Text(message).font(.footnote).foregroundStyle(Palette.secondaryText)
+                                .multilineTextAlignment(.center).padding(.horizontal, 20)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                }
+            } else {
+                signedInForm
+            }
+        }
+        .screenBackground()
+        .navigationTitle("HCG Account")
+        .confirmationDialog("Sign out of your HCG account on this device?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+            Button("Sign Out", role: .destructive) { Task { await account.signOut() } }
+        } message: {
+            Text("Newsroom lists and access information are removed from this device. Unsaved newsroom edits stay on this device for your account. Saved articles and downloads are kept.")
+        }
+        .alert("Workspace", isPresented: Binding(get: { account.workspaceError != nil }, set: { if !$0 { account.clearMessages() } })) {
+            Button("OK") { account.clearMessages() }
+        } message: { Text(account.workspaceError ?? "") }
+    }
+
+    private var signedInForm: some View {
         Form {
             if let user = account.user {
                 Section {
@@ -124,25 +155,8 @@ struct HCGAccountView: View {
                 } footer: {
                     Text("Roles and workspace access are managed centrally in the HCG ERP. Changes apply here the next time access is checked, including when you return to the app.")
                 }
-            } else {
-                Section {
-                    HCGSignInView(account: account).frame(maxWidth: .infinity)
-                }
-                if let message = account.lastMessage {
-                    Section { Text(message).font(.footnote) }
-                }
             }
         }
-        .screenBackground()
-        .navigationTitle("HCG Account")
-        .confirmationDialog("Sign out of your HCG account on this device?", isPresented: $confirmSignOut, titleVisibility: .visible) {
-            Button("Sign Out", role: .destructive) { Task { await account.signOut() } }
-        } message: {
-            Text("Newsroom lists and access information are removed from this device. Unsaved newsroom edits stay on this device for your account. Saved articles and downloads are kept.")
-        }
-        .alert("Workspace", isPresented: Binding(get: { account.workspaceError != nil }, set: { if !$0 { account.clearMessages() } })) {
-            Button("OK") { account.clearMessages() }
-        } message: { Text(account.workspaceError ?? "") }
     }
 
     @ViewBuilder
@@ -167,6 +181,9 @@ struct HCGAccountView: View {
                 }
                 Text("Checked \(NewsDate.short(permissions.checkedAt))")
                     .font(.caption).foregroundStyle(Palette.secondaryText)
+                if let problem = account.accessCheckProblem {
+                    Label(problem, systemImage: "exclamationmark.triangle").font(.footnote)
+                }
             }
         }
     }

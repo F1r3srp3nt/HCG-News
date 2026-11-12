@@ -84,7 +84,7 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 
 | Check | Result |
 |---|---|
-| `swift build` + `swift test` of HCGNewsKit (Swift 6.1, Linux) | **182 tests, 0 failures.** 47 are new: HCGPlatform 38 and NewsAppModel platform tests 9. |
+| `swift build` + `swift test` of HCGNewsKit (Swift 6.1, Linux) | **183 tests, 0 failures.** 48 are new: HCGPlatform 38 and NewsAppModel platform tests 10. |
 | Anonymous requests never carry a person's token; only published, due rows and reader columns are requested; Check Connection reports "no articles readable" instead of "connected" | `PublicationContentTests` |
 | Drafts and scheduled rows are dropped even if the server sends them | `testDraftsAndScheduledRowsAreDroppedEvenIfTheServerSendsThem` |
 | Privileged keys, other projects and unapproved files are refused | `PlatformConfigurationTests` |
@@ -94,7 +94,8 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 | A reader without a role never sees the Newsroom; staff do; sign-out clears account data; a revoked session is detected; conflicts keep local edits; unsaved edits survive a failed save and are offered again; publication needs approval and the right role; an untouched body is never re-sent | `PlatformModelTests` |
 | Lossless body round trip; unsupported content stays read-only | `ArticleBodyCodecTests` |
 | Workspace directory and handoff (HCG routes only; a 403 becomes "denied") | `WorkspaceServiceTests` |
-| SwiftUI layer | Syntax-checked (`swiftc -parse`), plus an independent read-only compile review (§7). **Not compiled**: no Mac or iOS SDK here. |
+| SwiftUI layer | Syntax-checked (`swiftc -parse`), plus an independent read-only compile review (§7): one compile error and six other issues, all fixed. **Not compiled**: no Mac or iOS SDK here. |
+| Failed access re-checks keep the confirmed access; a completed "no role" check removes it | `testRecheckKeepsConfirmedAccessUntilHCGSaysOtherwise` |
 
 ### Not verified (and why)
 

@@ -8,6 +8,8 @@ import Newsroom
 /// Local drafting always works; remote actions appear only when HCG and the
 /// newsroom service support and authorise them.
 struct NewsroomWorkspace: View {
+    /// When shown inside the HCG newsroom, Close returns there instead of closing the Newsroom.
+    var onClose: (() -> Void)? = nil
     @Environment(NewsAppEnvironment.self) private var env
     @Environment(Router.self) private var router
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -81,7 +83,7 @@ struct NewsroomWorkspace: View {
     @ToolbarContentBuilder
     private func workspaceToolbar(_ newsroom: NewsroomModel) -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button("Close") { router.isShowingNewsroom = false }
+            Button("Close") { if let onClose { onClose() } else { router.isShowingNewsroom = false } }
         }
         ToolbarItemGroup(placement: .primaryAction) {
             Button {

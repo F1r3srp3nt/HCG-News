@@ -30,6 +30,7 @@ final class FakeHCG: @unchecked Sendable {
     var status = "draft"
     var patchFails: Int? = nil
     var userEndpointStatus = 200
+    var rolesUnavailable = false
     init(roles: Set<String>) { self.roles = roles }
 
     func row() -> [String: Any] {
@@ -52,6 +53,7 @@ final class FakeHCG: @unchecked Sendable {
         case "/auth/v1/user": return (userEndpointStatus, body(["id": "user-1", "email": "staff@example.test"]))
         case "/auth/v1/logout": return (204, Data())
         case "/rest/v1/rpc/news_has_feature":
+            if rolesUnavailable { return (503, Data()) }
             let key = ((try? JSONSerialization.jsonObject(with: r.httpBody ?? Data())) as? [String: Any])?["_feature_key"] as? String ?? ""
             return (200, Data((roles.contains(key) ? "true" : "false").utf8))
         case "/api/public/mobile/workspaces":
@@ -144,6 +146,26 @@ final class PlatformModelTests: XCTestCase {
         XCTAssertFalse(account.isSignedIn)
         XCTAssertNotNil(account.expiredReason)
         XCTAssertFalse(c.environment.showsNewsroomEntry)
+    }
+
+    func testRecheckKeepsConfirmedAccessUntilHCGSaysOtherwise() async {
+        let hcg = FakeHCG(roles: ["news.editor"])
+        let c = await container(hcg)
+        let account = c.environment.platformAccount!
+        await account.signIn(email: "staff@example.test", password: "p")
+        XCTAssertTrue(c.environment.showsNewsroomEntry)
+
+        // A failed re-check (HCG unavailable) doesn't throw editors out.
+        hcg.lock.withLock { hcg.rolesUnavailable = true }
+        await account.refreshAccess()
+        XCTAssertTrue(c.environment.showsNewsroomEntry)
+        XCTAssertNotNil(account.accessCheckProblem)
+
+        // A completed check without the role removes access.
+        hcg.lock.withLock { hcg.rolesUnavailable = false; hcg.roles = [] }
+        await account.refreshAccess()
+        XCTAssertFalse(c.environment.showsNewsroomEntry)
+        XCTAssertNil(account.accessCheckProblem)
     }
 
     func editor(_ hcg: FakeHCG) async -> (AppContainer, RemoteArticleEditorModel) {
