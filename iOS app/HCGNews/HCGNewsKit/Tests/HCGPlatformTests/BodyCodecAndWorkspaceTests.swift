@@ -24,6 +24,23 @@ final class ArticleBodyCodecTests: XCTestCase {
         XCTAssertEqual(parser.parse(ArticleBodyCodec.encode(blocks)), parser.parse(html))
     }
 
+    func testUnderlineRoundTripsLosslessly() throws {
+        let html = "<p>Plain <u>underlined</u>, <strong><u>bold underlined</u></strong> and <a href=\"https://www.ssb.no/x\"><u>an underlined link</u></a>.</p><ul><li><p><u>Item</u></p></li></ul>"
+        guard case .editable(let blocks) = ArticleBodyCodec.decode(html, publicationURL: base) else { return XCTFail("not editable") }
+        XCTAssertEqual(blocks[0].text, "Plain __underlined__, __**bold underlined**__ and [__an underlined link__](https://www.ssb.no/x).")
+        let parser = HTMLContentParser(baseURL: base)
+        XCTAssertEqual(parser.parse(ArticleBodyCodec.encode(blocks)), parser.parse(html))
+        // Editing: typed underline markup becomes <u>.
+        var edited = blocks
+        edited[0].text = "Now __new__ text"
+        XCTAssertTrue(ArticleBodyCodec.encode(edited).hasPrefix("<p>Now <u>new</u> text</p>"))
+    }
+
+    func testLiteralDoubleUnderscoresKeepTheBodyReadOnly() {
+        // "snake__case" typed as text would turn into underline markup, so the body isn't offered for editing.
+        guard case .readOnly = ArticleBodyCodec.decode("<p>file__name__v2</p>", publicationURL: base) else { return XCTFail() }
+    }
+
     func testContentTheAppCantReproduceIsReadOnly() {
         let cases = [
             "<p>Text</p><iframe src=\"https://www.youtube.com/embed/x\"></iframe>",

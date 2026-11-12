@@ -245,6 +245,14 @@ final class StorageCodingAndWireTests: XCTestCase {
         XCTAssertEqual(try HCGJSON.makeDecoder().decode(Article.self, from: data), article)
     }
 
+    func testInlineRunsStoredBeforeUnderlineStillDecode() throws {
+        let old = Data(#"{"text":"t","bold":true,"italic":false,"code":false}"#.utf8)
+        let run = try JSONDecoder().decode(InlineRun.self, from: old)
+        XCTAssertEqual(run, InlineRun("t", bold: true))
+        let underlined = InlineRun("u", underline: true)
+        XCTAssertEqual(try JSONDecoder().decode(InlineRun.self, from: JSONEncoder().encode(underlined)), underlined)
+    }
+
     func testOptionalEditorialMetadataIsDecodedButNeverInvented() throws {
         var object = JSONFixture.summary(id: "a1")
         object["revision"] = 42

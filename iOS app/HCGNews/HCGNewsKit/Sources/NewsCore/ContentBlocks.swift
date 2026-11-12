@@ -7,17 +7,34 @@ public struct InlineRun: Hashable, Codable, Sendable {
     public var italic: Bool
     public var code: Bool
     public var link: URL?
+    /// Underlined text (`<u>` in the publication's HTML).
+    public var underline: Bool
 
-    public init(_ text: String, bold: Bool = false, italic: Bool = false, code: Bool = false, link: URL? = nil) {
+    public init(_ text: String, bold: Bool = false, italic: Bool = false, code: Bool = false, link: URL? = nil,
+                underline: Bool = false) {
         self.text = text
         self.bold = bold
         self.italic = italic
         self.code = code
         self.link = link
+        self.underline = underline
+    }
+
+    enum CodingKeys: String, CodingKey { case text, bold, italic, code, link, underline }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        text = try c.decode(String.self, forKey: .text)
+        bold = try c.decode(Bool.self, forKey: .bold)
+        italic = try c.decode(Bool.self, forKey: .italic)
+        code = try c.decode(Bool.self, forKey: .code)
+        link = try c.decodeIfPresent(URL.self, forKey: .link)
+        // Absent in copies stored before underline existed.
+        underline = try c.decodeIfPresent(Bool.self, forKey: .underline) ?? false
     }
 
     func sameStyle(as other: InlineRun) -> Bool {
-        bold == other.bold && italic == other.italic && code == other.code && link == other.link
+        bold == other.bold && italic == other.italic && code == other.code && link == other.link && underline == other.underline
     }
 }
 

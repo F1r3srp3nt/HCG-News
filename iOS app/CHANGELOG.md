@@ -22,6 +22,11 @@ Connected to the real publication and HCG identity, using the contracts the HCG 
 - Role-gated status changes with confirmations; publish or schedule.
 - Administration: sections, and the audit history for Administrators.
 
+**Underline**
+- The reader shows underlined text from the publication.
+- The newsroom body editor reads and writes it (`__underline__`). All 7 live articles are now editable in the app.
+- Downloaded copies from earlier builds still open.
+
 **Configuration**
 - `HCGNews/Resources/HCGNewsConfiguration.json` (`hcgPlatform`, public values only) is bundled, so Release and archive builds are connected.
 - The loader refuses secret and service-role keys and other projects.
@@ -31,7 +36,7 @@ Connected to the real publication and HCG identity, using the contracts the HCG 
 - `backend/`: a public-read SQL handoff, applied only if the check fails.
 
 **Tests**
-- 183 package tests (48 new).
+- 187 package tests (52 new).
 - The real-build UI test now expects a connected app.
 
 **Compile review (independent, read-only; the SwiftUI layer can't be compiled here)**

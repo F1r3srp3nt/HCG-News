@@ -22,7 +22,7 @@ public struct EditableBodyBlock: Equatable, Sendable, Identifiable, Codable {
 
     public var id: UUID
     public var kind: Kind
-    /// Text with **bold**, *italic* and [link](https://…) markup. One list item per line.
+    /// Text with **bold**, *italic*, __underline__ and [link](https://…) markup. One list item per line.
     public var text: String
     /// Quote attribution.
     public var attribution: String
@@ -52,7 +52,7 @@ public enum ArticleBodyCodec {
     }
 
     static let allowedTags: Set<String> = [
-        "p", "h2", "h3", "strong", "b", "em", "i", "a", "ul", "ol", "li", "blockquote", "cite",
+        "p", "h2", "h3", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li", "blockquote", "cite",
         "figure", "figcaption", "img", "hr", "br", "span",
     ]
 
@@ -169,6 +169,7 @@ public enum ArticleBodyCodec {
             var piece = run.text
             if run.bold { piece = "**\(piece)**" }
             if run.italic { piece = "*\(piece)*" }
+            if run.underline { piece = "__\(piece)__" }
             if let link = run.link { piece = "[\(piece)](\(link.absoluteString))" }
             out += piece
         }
@@ -181,6 +182,7 @@ public enum ArticleBodyCodec {
             var piece = escape(run.text).replacingOccurrences(of: "\n", with: "<br>")
             if run.bold { piece = "<strong>\(piece)</strong>" }
             if run.italic { piece = "<em>\(piece)</em>" }
+            if run.underline { piece = "<u>\(piece)</u>" }
             if let link = run.link {
                 piece = "<a href=\"\(escape(link.absoluteString))\" target=\"_blank\" rel=\"noopener noreferrer nofollow\">\(piece)</a>"
             }
@@ -188,17 +190,20 @@ public enum ArticleBodyCodec {
         }.joined()
     }
 
-    /// The same markup the local draft editor uses.
+    /// The local draft editor's markup, plus `__underline__`.
     static func markupRuns(_ text: String) -> InlineText {
         var runs: [InlineRun] = []
-        var bold = false, italic = false
+        var bold = false, italic = false, underline = false
         var buffer = ""
         let chars = Array(text)
         var i = 0
-        func flush() { if !buffer.isEmpty { runs.append(InlineRun(buffer, bold: bold, italic: italic)); buffer = "" } }
+        func flush() {
+            if !buffer.isEmpty { runs.append(InlineRun(buffer, bold: bold, italic: italic, underline: underline)); buffer = "" }
+        }
         while i < chars.count {
             let c = chars[i]
             if c == "*", i + 1 < chars.count, chars[i + 1] == "*" { flush(); bold.toggle(); i += 2; continue }
+            if c == "_", i + 1 < chars.count, chars[i + 1] == "_" { flush(); underline.toggle(); i += 2; continue }
             if c == "*" { flush(); italic.toggle(); i += 1; continue }
             if c == "[", let close = chars[(i + 1)...].firstIndex(of: "]"), close + 1 < chars.count, chars[close + 1] == "(",
                let end = matchingParen(chars, from: close + 1) {
@@ -206,7 +211,8 @@ public enum ArticleBodyCodec {
                 let label = markupRuns(String(chars[(i + 1)..<close]))
                 let url = URL(string: String(chars[(close + 2)..<end])).flatMap(LinkPolicy.allowedExternalURL)
                 for run in label.runs {
-                    runs.append(InlineRun(run.text, bold: bold || run.bold, italic: italic || run.italic, link: url))
+                    runs.append(InlineRun(run.text, bold: bold || run.bold, italic: italic || run.italic, link: url,
+                                          underline: underline || run.underline))
                 }
                 i = end + 1
                 continue

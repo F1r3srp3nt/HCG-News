@@ -62,7 +62,7 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 - Editor:
   - headline, subtitle, excerpt and slug ("From Headline");
   - section, type and byline (from verified authors);
-  - body blocks, with bold, italic and links;
+  - body blocks, with bold, italic, underline and links (`**bold**`, `*italic*`, `__underline__`, `[text](https://…)`);
   - cover and inline images from the media library, or uploaded with required alt text, caption and credit;
   - featured and breaking flags, SEO, tags, sources and a public correction note;
   - a native preview labelled "not published".
@@ -84,7 +84,7 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 
 | Check | Result |
 |---|---|
-| `swift build` + `swift test` of HCGNewsKit (Swift 6.1, Linux) | **183 tests, 0 failures.** 48 are new: HCGPlatform 38 and NewsAppModel platform tests 10. |
+| `swift build` + `swift test` of HCGNewsKit (Swift 6.1, Linux) | **187 tests, 0 failures.** 52 are new: HCGPlatform 40, NewsAppModel platform tests 10, and NewsCore underline 2. |
 | Anonymous requests never carry a person's token; only published, due rows and reader columns are requested; Check Connection reports "no articles readable" instead of "connected" | `PublicationContentTests` |
 | Drafts and scheduled rows are dropped even if the server sends them | `testDraftsAndScheduledRowsAreDroppedEvenIfTheServerSendsThem` |
 | Privileged keys, other projects and unapproved files are refused | `PlatformConfigurationTests` |
@@ -92,7 +92,8 @@ These rules decide **what the app offers**. Authorisation is the server's: every
 | Roles come only from the server function; any failed role check fails the whole check; permission rules match the website | `NewsroomRoleTests` |
 | Only changed fields are sent, guarded by the loaded revision; a concurrent edit becomes a conflict; an RLS refusal is reported; status changes record a version; scheduling sends the chosen time; failed media records roll back the upload | `NewsroomRepositoryTests` |
 | A reader without a role never sees the Newsroom; staff do; sign-out clears account data; a revoked session is detected; conflicts keep local edits; unsaved edits survive a failed save and are offered again; publication needs approval and the right role; an untouched body is never re-sent | `PlatformModelTests` |
-| Lossless body round trip; unsupported content stays read-only | `ArticleBodyCodecTests` |
+| Lossless body round trip, including underline; unsupported content stays read-only | `ArticleBodyCodecTests` |
+| Underline is parsed and shown in the reader; copies downloaded before underline existed still open | `testUnderlineIsKeptAsItsOwnStyle`, `testInlineRunsStoredBeforeUnderlineStillDecode` |
 | Workspace directory and handoff (HCG routes only; a 403 becomes "denied") | `WorkspaceServiceTests` |
 | SwiftUI layer | Syntax-checked (`swiftc -parse`), plus an independent read-only compile review (§7): one compile error and six other issues, all fixed. **Not compiled**: no Mac or iOS SDK here. |
 | Failed access re-checks keep the confirmed access; a completed "no role" check removes it | `testRecheckKeepsConfirmedAccessUntilHCGSaysOtherwise` |
@@ -118,8 +119,8 @@ Run with your go-ahead: `tools/verify-hcg-news-access.sh`, anonymous part only. 
 
   They returned 7 published articles: 1 demo article, 3 breaking, 6 featured, all with a section and an author. Images are on the HCG project's storage host, and timestamps have microseconds (parsed).
 - **Body editing on the live articles:**
-  - 4 of 7 are editable losslessly in the app.
-  - 3 are read-only in the app because they use underline (`<u>`). They read normally, and their bodies are never touched by a save.
+  - All 7 are now editable losslessly in the app, including the 3 that use underline (17 underlines in total).
+  - At first, those 3 were read-only, because the editor had no underline. Underline support was then added.
   - All 7 render with no "unsupported content" notices.
 - Two published articles still have `draft-<uuid>` slugs. That was already known; they still work.
 - **No public-read backend change is needed.**
@@ -153,7 +154,6 @@ Run with your go-ahead: `tools/verify-hcg-news-access.sh`, anonymous part only. 
 | Item | Owner | Blocking? |
 |---|---|---|
 | Column privileges for `anon` (`created_by`, `seo_title`, `view_count` currently readable) | HCG backend | No. Public reading already works; this is optional hardening. |
-| Underline (`<u>`) in the app's body editor (3 of 7 live articles are read-only in the app because of it) | App | No. Those bodies stay untouched; a later app update can add underline. |
 | Author disclosures stored as data (an author field or table) rather than website code | News website | No. The app mirrors the current text. |
 | A native OAuth/PKCE client for HCG News (redirect `com.hakmicapitalgroup.hcgnews:/oauth/callback`) | Central HCG | No. The password grant is HCG's documented sister-app contract. The OAuth path stays in the app for when a client is registered. |
 | Whether `updated_at` is maintained on every save | HCG backend | The app sets it on each save; `--write-tests` confirms stale saves are refused |

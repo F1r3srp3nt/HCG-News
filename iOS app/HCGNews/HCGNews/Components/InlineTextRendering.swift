@@ -3,7 +3,7 @@ import NewsCore
 
 extension InlineText {
     /// Converts sanitised inline runs to an AttributedString. Only bold, italic,
-    /// code and http(s)/mailto links exist at this point; nothing executable.
+    /// underline, code and http(s)/mailto links exist at this point; nothing executable.
     var attributed: AttributedString {
         var result = AttributedString()
         for run in runs {
@@ -13,6 +13,9 @@ extension InlineText {
             if run.italic { intent.insert(.emphasized) }
             if run.code { intent.insert(.code) }
             if !intent.isEmpty { piece.inlinePresentationIntent = intent }
+            if run.underline {
+                piece[AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.self] = .single
+            }
             if let link = run.link, LinkPolicy.allowedExternalURL(link) != nil {
                 piece.link = link
                 // Underlined as well as tinted, so links don't rely on colour alone.

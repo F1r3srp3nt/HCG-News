@@ -419,7 +419,7 @@ struct RemoteArticleEditorView: View {
             Text("Body")
         } footer: {
             if editor.bodyMode == .editable {
-                Text(verbatim: "Formatting: **bold**, *italic*, [link text](https://…).")
+                Text(verbatim: "Formatting: **bold**, *italic*, __underline__, [link text](https://…).")
             }
         }
     }
