@@ -1,13 +1,18 @@
 import SwiftUI
 import UIKit
+import CoreText
 
-// HCG News editorial identity.
+// HCG News editorial identity, taken from news.hakmicapitalgroup.com.
 //
-// Restrained black, charcoal, silver and white surfaces. Cyan is reserved for
-// actions and status (links, buttons, progress, selected states); it is never
-// used for large panels. Every colour adapts to Light / Dark and Increase Contrast.
+// Two editions, as on the website, each in Light and Dark:
+// - Future Edition: the futuristic HCG logo, signal-cyan accents, layered metallic
+//   surfaces and the command-centre backdrop.
+// - Classic Edition: the classic metallic HCG logo and black-and-white editorial reading.
+// The website's colour tokens are its dark appearance; the light appearances use the same
+// hues on an inverted neutral scale. Every text colour meets WCAG AA (4.5:1) on every
+// surface (body text AAA, 7:1), including Increase Contrast. See docs/DESIGN-SYSTEM.md.
 
-/// The reader's appearance choice.
+/// The reader's appearance choice. Independent of the edition.
 enum AppearanceChoice: String, CaseIterable, Identifiable {
     case system, light, dark
 
@@ -29,52 +34,210 @@ enum AppearanceChoice: String, CaseIterable, Identifiable {
     static let storageKey = "appearance"
 }
 
-private extension UIColor {
-    convenience init(light: UInt32, dark: UInt32, lightHC: UInt32? = nil, darkHC: UInt32? = nil) {
+/// The website's two editorial editions. Independent of the appearance.
+enum EditionChoice: String, CaseIterable, Identifiable {
+    case future, classic
+
+    var id: String { rawValue }
+    var title: String { self == .future ? "Future" : "Classic" }
+    var editionName: String { self == .future ? "Future Edition" : "Classic Edition" }
+    var summary: String {
+        self == .future
+            ? "The futuristic HCG logo, signal accents and the command-centre masthead."
+            : "The classic metallic HCG logo and black-and-white editorial reading."
+    }
+    /// Logo image set (transparent, with Light and Dark variants).
+    var logoAsset: String { self == .future ? "HCGFutureLogo" : "HCGClassicLogo" }
+    /// Width ÷ height of the logo artwork, so it is never stretched.
+    var logoAspectRatio: CGFloat { self == .future ? 1200.0 / 496.0 : 396.0 / 167.0 }
+    /// Card corner radius: the website uses 4 px (Future) and 2 px (Classic).
+    var cornerRadius: CGFloat { self == .future ? 4 : 2 }
+
+    static let storageKey = "edition"
+    /// The website opens in the Future Edition.
+    static let defaultEdition = EditionChoice.future
+    /// The edition currently selected (read by dynamic colours at resolution time).
+    static var current: EditionChoice {
+        UserDefaults.standard.string(forKey: storageKey).flatMap(EditionChoice.init(rawValue:)) ?? defaultEdition
+    }
+}
+
+/// Colour tokens. Values: (light, dark, light + Increase Contrast, dark + Increase Contrast).
+enum PaletteToken {
+    case background, surface, elevated, primaryText, secondaryText, silver, separator
+    case accent, onAccent, breaking, onBreaking, warning, destructive
+
+    func values(_ edition: EditionChoice) -> (UInt32, UInt32, UInt32, UInt32) {
+        switch edition {
+        case .classic:
+            switch self {
+            case .background: return (0xFFFFFF, 0x000000, 0xFFFFFF, 0x000000)
+            case .surface: return (0xF3F3F5, 0x020203, 0xF3F3F5, 0x020203)
+            case .elevated: return (0xFFFFFF, 0x0A0B0D, 0xFFFFFF, 0x0A0B0D)
+            case .primaryText: return (0x030304, 0xEDEEF1, 0x000000, 0xFFFFFF)
+            case .secondaryText: return (0x46484B, 0x95989D, 0x262829, 0xC5C6C9)
+            case .silver: return (0x5C5E61, 0xC7CBCE, 0x37383A, 0xDDE0E2)
+            case .separator: return (0xE0E0E0, 0x1F1F1F, 0xB2B2B2, 0x4C4C4C)
+            case .accent: return (0x006071, 0x8FCDD8, 0x00434F, 0xB1DCE4)
+            case .onAccent: return (0xFBFCFD, 0x0C0D0F, 0xFBFCFD, 0x0C0D0F)
+            case .breaking: return (0xC2181D, 0xD4302E, 0xC2181D, 0xD4302E)
+            case .onBreaking: return (0xFEFBFB, 0xFCF7F7, 0xFEFBFB, 0xFCF7F7)
+            case .warning: return (0x845000, 0xEBB25F, 0x845000, 0xEBB25F)
+            case .destructive: return (0xB7191C, 0xED756E, 0xB7191C, 0xED756E)
+            }
+        case .future:
+            switch self {
+            case .background: return (0xF5F7F9, 0x050506, 0xF5F7F9, 0x050506)
+            case .surface: return (0xE9EBEE, 0x111213, 0xE9EBEE, 0x111213)
+            case .elevated: return (0xFFFFFF, 0x1D1F23, 0xFFFFFF, 0x1D1F23)
+            case .primaryText: return (0x0E0F11, 0xEDEEF1, 0x000000, 0xFFFFFF)
+            case .secondaryText: return (0x505357, 0x95989D, 0x2C2E30, 0xC5C6C9)
+            case .silver: return (0x616368, 0xC7CBCE, 0x3A3B3E, 0xDDE0E2)
+            case .separator: return (0xDCDEE0, 0x1C1C1C, 0xACADAE, 0x505051)
+            case .accent: return (0x006678, 0x8FCDD8, 0x004754, 0xB1DCE4)
+            case .onAccent: return (0xFBFCFD, 0x0C0D0F, 0xFBFCFD, 0x0C0D0F)
+            case .breaking: return (0xC2181D, 0xD4302E, 0xC2181D, 0xD4302E)
+            case .onBreaking: return (0xFEFBFB, 0xFCF7F7, 0xFEFBFB, 0xFCF7F7)
+            case .warning: return (0x845000, 0xEBB25F, 0x845000, 0xEBB25F)
+            case .destructive: return (0xB7191C, 0xED756E, 0xB7191C, 0xED756E)
+            }
+        }
+    }
+}
+
+extension UIColor {
+    /// A colour that follows the edition, Light/Dark and Increase Contrast.
+    convenience init(token: PaletteToken) {
         self.init { traits in
+            let (light, dark, lightHC, darkHC) = token.values(EditionChoice.current)
             let high = traits.accessibilityContrast == .high
-            let value: UInt32
-            if traits.userInterfaceStyle == .dark { value = high ? (darkHC ?? dark) : dark } else { value = high ? (lightHC ?? light) : light }
+            let value = traits.userInterfaceStyle == .dark ? (high ? darkHC : dark) : (high ? lightHC : light)
             return UIColor(red: CGFloat((value >> 16) & 0xff) / 255, green: CGFloat((value >> 8) & 0xff) / 255,
                            blue: CGFloat(value & 0xff) / 255, alpha: 1)
         }
     }
 }
 
-/// Semantic colours. All text pairs meet WCAG AA (4.5:1) on their backgrounds;
-/// body text meets AAA (7:1).
+/// Semantic colours (edition- and appearance-aware).
 enum Palette {
-    static let background = Color(uiColor: UIColor(light: 0xFAFAF8, dark: 0x0B0B0C))
-    static let surface = Color(uiColor: UIColor(light: 0xF0F0EE, dark: 0x17181A))
-    static let elevated = Color(uiColor: UIColor(light: 0xFFFFFF, dark: 0x1F2023))
-    static let primaryText = Color(uiColor: UIColor(light: 0x121212, dark: 0xF2F2F2, lightHC: 0x000000, darkHC: 0xFFFFFF))
-    static let secondaryText = Color(uiColor: UIColor(light: 0x4A4B50, dark: 0xA9ABB0, lightHC: 0x2C2D31, darkHC: 0xD4D6DA))
-    /// Silver: rules, hairlines and quiet labels.
-    static let silver = Color(uiColor: UIColor(light: 0x8A8C91, dark: 0x8E9096, lightHC: 0x5F6166, darkHC: 0xB9BBC0))
-    static let separator = Color(uiColor: UIColor(light: 0xDADAD6, dark: 0x2C2D30, lightHC: 0x9A9B97, darkHC: 0x5A5B5F))
-    /// Cyan, for actions and status only.
-    static let accent = Color(uiColor: UIColor(light: 0x007C99, dark: 0x3FD0E0, lightHC: 0x005F75, darkHC: 0x7BE3EE))
+    static let background = Color(uiColor: UIColor(token: .background))
+    static let surface = Color(uiColor: UIColor(token: .surface))
+    static let elevated = Color(uiColor: UIColor(token: .elevated))
+    static let primaryText = Color(uiColor: UIColor(token: .primaryText))
+    static let secondaryText = Color(uiColor: UIColor(token: .secondaryText))
+    /// Silver / metal: rules, hairlines, category eyebrows and quiet labels.
+    static let silver = Color(uiColor: UIColor(token: .silver))
+    static let separator = Color(uiColor: UIColor(token: .separator))
+    /// The website's signal colour: actions, links and status only.
+    static let accent = Color(uiColor: UIColor(token: .accent))
     /// Text on an accent-filled control.
-    static let onAccent = Color(uiColor: UIColor(light: 0xFFFFFF, dark: 0x061014))
-    /// The masthead band is always black: the HCG logo's native ground.
-    static let masthead = Color.black
-    static let warning = Color(uiColor: UIColor(light: 0x8A5300, dark: 0xF2B35A))
-    static let destructive = Color(uiColor: UIColor(light: 0xB3261E, dark: 0xF2867F))
+    static let onAccent = Color(uiColor: UIColor(token: .onAccent))
+    /// The breaking-news bar.
+    static let breaking = Color(uiColor: UIColor(token: .breaking))
+    static let onBreaking = Color(uiColor: UIColor(token: .onBreaking))
+    static let warning = Color(uiColor: UIColor(token: .warning))
+    static let destructive = Color(uiColor: UIColor(token: .destructive))
+    /// The masthead sits on the page background (no black band behind the logo).
+    static let masthead = background
 }
 
-/// Typography. Every style is a Dynamic Type text style.
+// MARK: - Fonts
+
+/// The website's typefaces, bundled under the SIL Open Font License (Resources/Fonts):
+/// Newsreader (serif headlines, the italic "News" wordmark, article text) and Manrope
+/// (labels and metadata). If a font can't be loaded, the system serif or sans is used.
+enum BrandFonts {
+    @MainActor private static var registered = false
+
+    /// Registers the bundled fonts for this process (called once at launch, before any view).
+    @MainActor static func register() {
+        guard !registered else { return }
+        registered = true
+        let urls = (Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? [])
+            + (Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? [])
+        for url in urls where url.lastPathComponent.hasPrefix("Newsreader") || url.lastPathComponent.hasPrefix("Manrope") {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+    }
+
+    /// The bundled font names that loaded, checked once (after `register()`, at first use).
+    private static let loadedNames: Set<String> = {
+        let names = [Font.Weight.regular, .medium, .semibold, .bold].flatMap {
+            [newsreader($0), newsreader($0, italic: true), manrope($0)]
+        }
+        return Set(names.filter { UIFont(name: $0, size: 12) != nil })
+    }()
+
+    static func available(_ name: String) -> Bool { loadedNames.contains(name) }
+
+    static func newsreader(_ weight: Font.Weight, italic: Bool = false) -> String {
+        let family = italic ? "NewsreaderItalic" : "NewsreaderRoman"
+        switch weight {
+        case .bold, .heavy, .black: return family + "-Bold"
+        case .semibold: return family + "-SemiBold"
+        case .medium: return family + "-Medium"
+        default: return family + "-Regular"
+        }
+    }
+
+    static func manrope(_ weight: Font.Weight) -> String {
+        switch weight {
+        case .bold, .heavy, .black: return "Manrope-Bold"
+        case .semibold: return "Manrope-SemiBold"
+        case .medium: return "Manrope-Medium"
+        default: return "Manrope-Regular"
+        }
+    }
+
+    /// Default point sizes of the text styles at the standard Dynamic Type size.
+    static func baseSize(_ style: Font.TextStyle) -> CGFloat {
+        switch style {
+        case .largeTitle: 34
+        case .title: 28
+        case .title2: 22
+        case .title3: 20
+        case .headline, .body: 17
+        case .callout: 16
+        case .subheadline: 15
+        case .footnote: 13
+        case .caption: 12
+        case .caption2: 11
+        @unknown default: 17
+        }
+    }
+}
+
+/// Typography. Every style scales with Dynamic Type (`relativeTo:`).
 enum Typography {
+    /// Editorial serif headline (Newsreader).
     static func headline(_ style: Font.TextStyle, weight: Font.Weight = .semibold) -> Font {
-        .system(style, design: .serif, weight: weight)
+        let name = BrandFonts.newsreader(weight)
+        guard BrandFonts.available(name) else { return .system(style, design: .serif, weight: weight) }
+        return .custom(name, size: BrandFonts.baseSize(style), relativeTo: style)
+    }
+
+    /// Italic serif, as in the website's "News" wordmark and taglines.
+    static func serifItalic(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
+        let name = BrandFonts.newsreader(weight, italic: true)
+        guard BrandFonts.available(name) else { return .system(style, design: .serif, weight: weight).italic() }
+        return .custom(name, size: BrandFonts.baseSize(style), relativeTo: style)
+    }
+
+    /// Manrope, the website's interface face.
+    static func sans(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
+        let name = BrandFonts.manrope(weight)
+        guard BrandFonts.available(name) else { return .system(style, weight: weight) }
+        return .custom(name, size: BrandFonts.baseSize(style), relativeTo: style)
     }
 
     static func body(_ typeface: ArticleTypeface) -> Font {
-        typeface == .serif ? .system(.body, design: .serif) : .system(.body)
+        typeface == .serif ? headline(.body, weight: .regular) : sans(.body)
     }
 
-    static let kicker = Font.system(.caption, weight: .semibold)
-    static let meta = Font.system(.footnote)
-    static let sectionTitle = Font.system(.footnote, weight: .bold)
+    /// The website's uppercase "eyebrow" label (category, edition, BREAKING).
+    static var kicker: Font { sans(.caption, weight: .semibold) }
+    static var meta: Font { sans(.footnote) }
+    static var sectionTitle: Font { sans(.footnote, weight: .bold) }
 }
 
 // MARK: - Reader settings
@@ -150,24 +313,55 @@ enum ReadingSize {
 // MARK: - Root styling
 
 struct ThemedRoot: ViewModifier {
+    /// True for presented content (sheets, covers): it is redrawn when the edition changes.
+    /// False at the app root, so a change never tears down presentations or app state.
+    var refreshesOnEditionChange = true
     @AppStorage(AppearanceChoice.storageKey) private var appearanceRaw = AppearanceChoice.system.rawValue
+    @AppStorage(EditionChoice.storageKey) private var editionRaw = EditionChoice.defaultEdition.rawValue
 
     func body(content: Content) -> some View {
         content
+            .id(refreshesOnEditionChange ? editionRaw : "app")
+            .environment(\.edition, EditionChoice(rawValue: editionRaw) ?? .defaultEdition)
             .tint(Palette.accent)
             .preferredColorScheme((AppearanceChoice(rawValue: appearanceRaw) ?? .system).colorScheme)
     }
 }
 
+struct EditionRefresh: ViewModifier {
+    @AppStorage(EditionChoice.storageKey) private var editionRaw = EditionChoice.defaultEdition.rawValue
+    func body(content: Content) -> some View { content.id(editionRaw) }
+}
+
+private struct EditionKey: EnvironmentKey {
+    static let defaultValue = EditionChoice.defaultEdition
+}
+
+extension EnvironmentValues {
+    /// The selected editorial edition.
+    var edition: EditionChoice {
+        get { self[EditionKey.self] }
+        set { self[EditionKey.self] = newValue }
+    }
+}
+
 extension View {
+    /// Theme for presented content (sheets, covers, previews).
     func hcgThemed() -> some View { modifier(ThemedRoot()) }
+
+    /// Theme for the app's root window content. Never re-identified.
+    func hcgThemedApp() -> some View { modifier(ThemedRoot(refreshesOnEditionChange: false)) }
+
+    /// Redraws this navigation container when the edition changes: edition colours are resolved
+    /// when drawn. Navigation paths live in the Router, so the reader stays where they were.
+    func editionRefreshing() -> some View { modifier(EditionRefresh()) }
 
     func screenBackground() -> some View {
         scrollContentBackground(.hidden).background(Palette.background.ignoresSafeArea())
     }
 
     /// A quiet card surface with a hairline border.
-    func cardSurface(cornerRadius: CGFloat = 12) -> some View {
+    func cardSurface(cornerRadius: CGFloat = 8) -> some View {
         padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Palette.surface, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -205,6 +399,11 @@ struct SecondaryButtonStyle: ButtonStyle {
 
 /// Dates used across the app.
 enum NewsDate {
+    /// The website's article date: "27 Nov 2026" (day, short month, year).
+    static func article(_ date: Date) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated).year())
+    }
+
     static func full(_ date: Date) -> String {
         date.formatted(.dateTime.day().month(.wide).year().hour().minute())
     }

@@ -10,6 +10,11 @@ struct HCGNewsApp: App {
     @State private var container: AppContainer?
     @State private var router = Router()
 
+    init() {
+        // The website's typefaces (Newsreader, Manrope), before any view draws.
+        BrandFonts.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -21,7 +26,7 @@ struct HCGNewsApp: App {
                 }
             }
             .environment(router)
-            .hcgThemed()
+            .hcgThemedApp()
         }
         .commands { NewsCommands(router: router) }
     }
@@ -62,8 +67,8 @@ struct ContainerRoot: View {
 struct LaunchView: View {
     var body: some View {
         ZStack {
-            Palette.masthead.ignoresSafeArea()
-            HCGMark(height: 72)
+            Palette.background.ignoresSafeArea()
+            NewsWordmark(logoHeight: 56)
         }
         .accessibilityLabel("HCG News is opening")
     }
@@ -101,10 +106,18 @@ enum AppBootstrap {
             ?? FileManager.default.temporaryDirectory
         let stores = LocalStores.rooted(at: support.appendingPathComponent("HCGNews", isDirectory: true),
                                         bundledConfiguration: bundledConfiguration(), redirectScheme: callbackScheme)
+        var allowlist: Set<ArticleID>?
+        #if DEBUG
+        // App Store screenshot mode: only articles cleared in docs/EDITORIAL-REVIEW-2026-11-27.md.
+        if let ids = ProcessInfo.processInfo.environment["HCGNEWS_SCREENSHOT_ARTICLES"], !ids.isEmpty {
+            allowlist = Set(ids.split(separator: ",").map { ArticleID($0.trimmingCharacters(in: .whitespaces)) })
+        }
+        #endif
         let platform = PlatformServices(transport: URLSessionTransport(), browser: SystemBrowserAuthenticator(),
                                         sessionStore: KeychainSessionStore(), userAgent: userAgent,
                                         redirectScheme: callbackScheme, appVersion: appVersion,
-                                        accountStore: KeychainSessionStore(service: "com.hakmicapitalgroup.hcgnews.account"))
+                                        accountStore: KeychainSessionStore(service: "com.hakmicapitalgroup.hcgnews.account"),
+                                        articleAllowlist: allowlist)
         return await AppContainer(platform: platform, stores: stores)
     }
 }

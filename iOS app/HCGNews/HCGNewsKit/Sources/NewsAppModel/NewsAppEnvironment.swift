@@ -16,10 +16,14 @@ public struct PlatformServices: Sendable {
     public let appVersion: String
     /// Keychain item for the HCG account session (separate from the OAuth item).
     public let accountStore: ConnectSessionStoring
+    /// DEBUG screenshot mode only: show just these reviewed articles. Nil in normal use.
+    public let articleAllowlist: Set<ArticleID>?
 
     public init(transport: HTTPTransport, browser: BrowserAuthenticating, sessionStore: ConnectSessionStoring,
-                userAgent: String, redirectScheme: String, appVersion: String, accountStore: ConnectSessionStoring? = nil) {
+                userAgent: String, redirectScheme: String, appVersion: String, accountStore: ConnectSessionStoring? = nil,
+                articleAllowlist: Set<ArticleID>? = nil) {
         self.accountStore = accountStore ?? InMemorySessionStore()
+        self.articleAllowlist = articleAllowlist
         self.transport = transport
         self.browser = browser
         self.sessionStore = sessionStore
@@ -245,7 +249,7 @@ public final class AppContainer {
         let connect = await stores.configuration.connectState()
         let coordinator = HCGConnectCoordinator(configuration: connect.0, browser: platform.browser, store: platform.sessionStore,
                                                 transport: platform.transport, userAgent: platform.userAgent)
-        let service: NewsService
+        var service: NewsService
         var newsroomService: NewsroomService = UnavailableNewsroomService()
         var newsroomConfigured = false
         var platformParts: (account: PlatformAccountModel, repository: NewsroomRepository)?
@@ -270,6 +274,9 @@ public final class AppContainer {
             service = UnconfiguredNewsService(reasons: ["No publication configuration is installed."])
         case .invalid(let problems):
             service = UnconfiguredNewsService(reasons: problems, invalid: true)
+        }
+        if let allowlist = platform.articleAllowlist {
+            service = AllowlistedNewsService(base: service, allowed: allowlist)
         }
         return NewsAppEnvironment(publication: publication, connect: connect, service: service,
                                   newsroomService: newsroomService, newsroomServiceConfigured: newsroomConfigured,

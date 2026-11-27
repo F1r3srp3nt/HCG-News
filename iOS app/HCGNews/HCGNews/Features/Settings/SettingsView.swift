@@ -3,11 +3,13 @@ import UniformTypeIdentifiers
 import NewsCore
 import NewsAppModel
 import HCGConnect
+import HCGPlatform
 
 struct SettingsView: View {
     @Environment(NewsAppEnvironment.self) private var env
     @Environment(Router.self) private var router
     @AppStorage(AppearanceChoice.storageKey) private var appearanceRaw = AppearanceChoice.system.rawValue
+    @AppStorage(EditionChoice.storageKey) private var editionRaw = EditionChoice.defaultEdition.rawValue
 
     var body: some View {
         Form {
@@ -20,10 +22,21 @@ struct SettingsView: View {
                     }
                 }
             }
-            Section("Reading") {
+            Section {
+                Picker("Edition", selection: $editionRaw) {
+                    ForEach(EditionChoice.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .accessibilityIdentifier("settings-edition")
                 Picker("Appearance", selection: $appearanceRaw) {
                     ForEach(AppearanceChoice.allCases) { Text($0.title).tag($0.rawValue) }
                 }
+                .accessibilityIdentifier("settings-appearance")
+            } header: {
+                Text("Edition and appearance")
+            } footer: {
+                Text("\((EditionChoice(rawValue: editionRaw) ?? .defaultEdition).editionName): \((EditionChoice(rawValue: editionRaw) ?? .defaultEdition).summary) Both editions work in Light and Dark; System follows your device.")
+            }
+            Section("Reading") {
                 NavigationLink("Text and layout", value: SettingsRoute.reading)
                 NavigationLink("Notifications", value: SettingsRoute.notifications)
             }
@@ -462,11 +475,9 @@ struct AboutView: View {
         Form {
             Section {
                 VStack(spacing: 16) {
-                    HCGMark(height: 64)
-                        .padding(12)
-                        .background(Color.black, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    Text("HCG News").font(Typography.headline(.title2))
-                    Text("Version \(AppBootstrap.appVersion) · development build, not released")
+                    NewsWordmark(logoHeight: 56)
+                    Text("The future of information.").font(Typography.serifItalic(.body)).foregroundStyle(Palette.secondaryText)
+                    Text("Version \(AppBootstrap.appVersion)")
                         .font(.footnote).foregroundStyle(Palette.secondaryText)
                 }
                 .frame(maxWidth: .infinity)
@@ -476,15 +487,27 @@ struct AboutView: View {
                 Link("Editorial policy", destination: URL(string: "https://news.hakmicapitalgroup.com/editorial-policy")!)
                 Link("Corrections", destination: URL(string: "https://news.hakmicapitalgroup.com/corrections")!)
                 Link("Advertising disclosure", destination: URL(string: "https://news.hakmicapitalgroup.com/advertising-disclosure")!)
-                Link("Privacy", destination: URL(string: "https://news.hakmicapitalgroup.com/privacy")!)
+                Link("Privacy policy", destination: URL(string: "https://news.hakmicapitalgroup.com/privacy")!)
+                Link("Terms", destination: URL(string: "https://news.hakmicapitalgroup.com/terms")!)
+                Link("About HCG News", destination: URL(string: "https://news.hakmicapitalgroup.com/about")!)
                 Link("Contact", destination: URL(string: "https://news.hakmicapitalgroup.com/contact")!)
             }
-            Section("Not available in this version") {
+            Section("Disclosure") {
+                Text(PublicationDisclosures.publicationDisclosure)
+                    .font(.footnote)
+                Text("This affiliation is disclosed in the interest of transparency; articles are not party statements and do not imply party endorsement.")
+                    .font(.footnote).foregroundStyle(Palette.secondaryText)
+            }
+            Section("Not offered in this version") {
                 Text("Push notifications (no notification service yet)")
                 Text("Saved-article sync between devices (no sync service yet)")
                 Text("Subscriptions and payments (none offered in the app)")
             }
             .font(.footnote)
+            Section("Acknowledgements") {
+                Text("Typefaces: Newsreader (The Newsreader Project Authors) and Manrope (The Manrope Project Authors), used under the SIL Open Font License 1.1. The licences are included in the app.")
+                    .font(.footnote).foregroundStyle(Palette.secondaryText)
+            }
             Section { PublisherAttribution(large: true).padding(.vertical, 8) }
         }
         .screenBackground()

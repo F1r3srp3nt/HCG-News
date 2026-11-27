@@ -74,11 +74,39 @@ final class ImagePipeline {
 /// An image at its true proportions: never cropped, never overlaid with text
 /// (editorial artwork may contain its own headline). A missing image collapses
 /// rather than leaving an empty box. Tapping enlarges it when `zoomable`.
+/// The website's "no featured image" tile: "HCG News" in italic serif over a quiet
+/// signal-tinted surface, with the section eyebrow.
+struct MediaPlaceholder: View {
+    var section: String?
+
+    var body: some View {
+        ZStack {
+            Palette.surface
+            RadialGradient(colors: [Palette.accent.opacity(0.12), .clear], center: UnitPoint(x: 0.7, y: 0.3),
+                           startRadius: 0, endRadius: 220)
+            VStack(spacing: 6) {
+                Text("HCG News").font(Typography.serifItalic(.title3)).foregroundStyle(Palette.silver)
+                if let section {
+                    Text(section.uppercased()).font(Typography.sans(.caption2, weight: .semibold))
+                        .foregroundStyle(Palette.secondaryText)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("No featured image")
+    }
+}
+
 struct ArticleImageView: View {
     let image: ArticleImage
     var maxHeight: CGFloat?
     var cornerRadius: CGFloat = 6
     var zoomable = false
+    /// When set, the image fills a frame of this width ÷ height (cropped, like the
+    /// website's 16:10 card media). Otherwise it is shown whole at its own proportions.
+    var fillAspect: CGFloat? = nil
+    /// Section name for the placeholder when a fill-frame image is missing.
+    var placeholderSection: String? = nil
 
     @Environment(\.offlineImageResolver) private var resolver
     @State private var loaded: UIImage?
@@ -87,7 +115,24 @@ struct ArticleImageView: View {
 
     var body: some View {
         Group {
-            if let loaded {
+            if let fillAspect {
+                Color.clear
+                    .aspectRatio(fillAspect, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .overlay {
+                        if let loaded {
+                            Image(uiImage: loaded).resizable().aspectRatio(contentMode: .fill)
+                        } else if failed {
+                            MediaPlaceholder(section: placeholderSection)
+                        } else {
+                            Palette.surface
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                    .accessibilityElement()
+                    .accessibilityLabel(image.alt ?? "")
+                    .accessibilityHidden(image.alt == nil || loaded == nil)
+            } else if let loaded {
                 let picture = Image(uiImage: loaded)
                     .resizable()
                     .aspectRatio(contentMode: .fit)

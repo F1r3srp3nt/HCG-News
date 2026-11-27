@@ -2,7 +2,7 @@
 
 The iOS app for [news.hakmicapitalgroup.com](https://news.hakmicapitalgroup.com). Everything for it lives in this `iOS app` folder.
 
-**Status: version 0.2.0 (2), development build. Not released and not production-ready.** It has not yet been compiled or run on a Mac, simulator or device. See [docs/INTEGRATION-REPORT.md](docs/INTEGRATION-REPORT.md) and [CHANGELOG.md](CHANGELOG.md).
+**Status: version 1.0.0 (3), release candidate. Not submitted to TestFlight or the App Store.** It has not yet been compiled or run on a Mac, simulator or device. Before submitting, work through [docs/APP-STORE-RELEASE.md](docs/APP-STORE-RELEASE.md) §1 and [docs/EDITORIAL-REVIEW-2026-11-27.md](docs/EDITORIAL-REVIEW-2026-11-27.md). See also [CHANGELOG.md](CHANGELOG.md).
 
 HCG News is the publication's native reader and newsroom companion:
 
@@ -18,7 +18,10 @@ The app consumes the publication's content and HCG's central identity. It has no
 | | |
 |---|---|
 | Project | [`HCGNews/HCGNews.xcodeproj`](HCGNews/HCGNews.xcodeproj) (Xcode 16+, iOS 17+) |
-| Core package | [`HCGNews/HCGNewsKit`](HCGNews/HCGNewsKit). Foundation only; 187 tests, passing on Linux (Swift 6.1). |
+| Core package | [`HCGNews/HCGNewsKit`](HCGNews/HCGNewsKit). Foundation only; 188 tests, passing on Linux (Swift 6.1). |
+| **App Store release: checklist, metadata, privacy, signing** | [docs/APP-STORE-RELEASE.md](docs/APP-STORE-RELEASE.md) |
+| **Editorial review of published articles (screenshots)** | [docs/EDITORIAL-REVIEW-2026-11-27.md](docs/EDITORIAL-REVIEW-2026-11-27.md) |
+| Design system: editions, palettes, logos, fonts | [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md) |
 | **Real integration: what, how, verification, your steps** | [docs/INTEGRATION-REPORT.md](docs/INTEGRATION-REPORT.md) |
 | Access check (run it yourself) · backend handoff if needed | [tools/verify-hcg-news-access.sh](tools/verify-hcg-news-access.sh) · [backend/HCG-NEWS-PUBLIC-READ.md](backend/HCG-NEWS-PUBLIC-READ.md) |
 | Build and test | [docs/BUILD-AND-TEST.md](docs/BUILD-AND-TEST.md) |

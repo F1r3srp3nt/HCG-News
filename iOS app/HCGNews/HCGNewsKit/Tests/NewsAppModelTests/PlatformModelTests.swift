@@ -248,6 +248,21 @@ final class PlatformModelTests: XCTestCase {
         XCTAssertEqual(editor.fields.body, "<p>Changed</p>")
     }
 
+    func testScreenshotAllowlistShowsOnlyReviewedArticles() async throws {
+        let article = { (id: String, title: String) -> ArticleSummary in
+            ArticleSummary(id: ArticleID(id), headline: title, publishedAt: Date(timeIntervalSince1970: 1_790_000_000))
+        }
+        let stub = StubNewsService(home: .success(HomeFeed(featured: [article("a", "Cleared"), article("b", "Not cleared")],
+                                                            breaking: [article("b", "Not cleared")],
+                                                            latest: ArticlePage(items: [article("a", "Cleared"), article("c", "Other")], nextCursor: nil))))
+        let service = AllowlistedNewsService(base: stub, allowed: [ArticleID("a")])
+        let feed = try await service.home()
+        XCTAssertEqual(feed.featured.map(\.id.rawValue), ["a"])
+        XCTAssertTrue(feed.breaking.isEmpty)
+        XCTAssertEqual(feed.latest.items.map(\.id.rawValue), ["a"])
+        do { _ = try await service.article(id: ArticleID("b")); XCTFail() } catch let e as NewsServiceError { XCTAssertEqual(e, .notFound) }
+    }
+
     func testPlatformConfigurationImportPreviewNamesTheDestinations() async {
         let c = await container(FakeHCG(roles: []))
         let preview = await c.preview(JSONFixture.data(platformConfigurationJSON), as: .publication)

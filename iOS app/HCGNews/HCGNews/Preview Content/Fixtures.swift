@@ -24,7 +24,12 @@ enum UITestFixtures {
         let support = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
         let root = support.appendingPathComponent("HCGNews-DevFixtures", isDirectory: true)
-        if env["HCGNEWS_UI_TEST_RESET"] == "1" { try? FileManager.default.removeItem(at: root) }
+        if env["HCGNEWS_UI_TEST_RESET"] == "1" {
+            try? FileManager.default.removeItem(at: root)
+            // Each reset run starts from the default edition and appearance.
+            UserDefaults.standard.removeObject(forKey: EditionChoice.storageKey)
+            UserDefaults.standard.removeObject(forKey: AppearanceChoice.storageKey)
+        }
         return PreviewFixtures.container(root: root,
                                          offline: env["HCGNEWS_UI_TEST_OFFLINE"] == "1",
                                          emptyHome: env["HCGNEWS_UI_TEST_EMPTY"] == "1")

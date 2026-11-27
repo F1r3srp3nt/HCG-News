@@ -18,9 +18,7 @@ struct HCGSignInView: View {
     var body: some View {
         VStack(spacing: 18) {
             VStack(spacing: 10) {
-                HCGMark(height: 44)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.black, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                NewsWordmark(logoHeight: 40)
                 Text("Sign in with your HCG account")
                     .font(Typography.headline(.title3))
                     .multilineTextAlignment(.center)
