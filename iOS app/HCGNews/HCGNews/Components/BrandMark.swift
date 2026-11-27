@@ -23,6 +23,8 @@ struct HCGMark: View {
 /// "HCG | News": logo, separator, italic serif wordmark.
 struct NewsWordmark: View {
     var logoHeight: CGFloat = 28
+    /// What VoiceOver reads for the logo and wordmark.
+    var accessibilityName = "HCG News"
     @ScaledMetric(relativeTo: .title) private var scale: CGFloat = 1
 
     var body: some View {
@@ -38,7 +40,7 @@ struct NewsWordmark: View {
                 .fixedSize()
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("HCG News")
+        .accessibilityLabel(accessibilityName)
     }
 
     /// Italic Newsreader at the logo's scale (the system italic serif if it can't load).
@@ -63,7 +65,10 @@ struct Masthead: View {
             Rectangle().fill(Palette.separator).frame(height: 1).accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                NewsWordmark(logoHeight: sizeClass == .regular ? 40 : 32)
+                // The masthead's heading; it names the edition, which Classic doesn't show as text.
+                NewsWordmark(logoHeight: sizeClass == .regular ? 40 : 32,
+                             accessibilityName: "HCG News, \(edition.editionName)")
+                    .accessibilityAddTraits(.isHeader)
                 Text("A HAKMI CAPITAL GROUP PUBLICATION")
                     .font(Typography.sans(.caption2, weight: .medium))
                     .tracking(0.6)
@@ -78,14 +83,6 @@ struct Masthead: View {
         .padding(.horizontal, sizeClass == .regular ? 32 : 16)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(mastheadLabel)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    /// Everything the masthead shows, in reading order (it is one accessibility element).
-    private var mastheadLabel: String {
-        "HCG News, \(edition.editionName). A Hakmi Capital Group publication. \(NewsDate.day(Date())). The future of information. Technology, business, markets and the ideas shaping tomorrow."
     }
 
     private var dateLine: some View {

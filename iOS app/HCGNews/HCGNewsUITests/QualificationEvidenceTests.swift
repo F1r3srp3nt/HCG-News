@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// Release-qualification evidence. Uses the DEBUG development fixtures, which are labelled on screen, so
 /// no unreviewed article appears in the evidence. Renders the main screens in every edition and
@@ -146,8 +147,10 @@ final class QualificationEvidenceTests: XCTestCase {
     /// Apple's automated accessibility audit on the key screens.
     ///
     /// Gate: every finding fails the test except these, which are listed in the report with the reason:
-    /// - Contrast measured on text lying under the system's translucent bars (tab bar, navigation bar,
-    ///   toolbars) or inside the scroll-edge effect beside them: the audit samples blurred glass there.
+    /// - Contrast on text lying under the system's translucent bars (tab bar, navigation bar, toolbars)
+    ///   or inside the scroll-edge effect beside them: the audit samples blurred glass there.
+    /// - Contrast findings whose element, measured on its own rendered pixels, meets WCAG AA (4.5:1).
+    ///   Each such element's measured ratio is in the report; below 4.5:1 the finding fails.
     /// - Dynamic Type on the brand wordmark ("HCG | News"), which is a logo and scales only to its cap.
     /// - "Partially unsupported" Dynamic Type and "may be clipped" heuristics: checked instead against the
     ///   real rendering at the largest accessibility size (testLargestDynamicTypeRendering, 09 screenshots).
@@ -170,16 +173,31 @@ final class QualificationEvidenceTests: XCTestCase {
                 open()
                 sleep(2)
                 let bars = barFrames(in: app)
+                var toMeasure: [(line: String, element: XCUIElement)] = []
                 let handler: (XCUIAccessibilityAuditIssue) -> Bool = { issue in
                     let line = "[\(tag) \(screen)] \(issue.compactDescription): \(issue.detailedDescription) — element: \(issue.element?.label ?? "(none)")"
                     if let reason = self.advisoryReason(for: issue, bars: bars) {
                         advisory.append(line + " — not gating: " + reason)
                         return true
                     }
+                    if issue.auditType == .contrast, let element = issue.element {
+                        toMeasure.append((line, element))
+                        return true
+                    }
                     failing.append(line)
                     return false
                 }
                 try app.performAccessibilityAudit(for: .contrast, handler)
+                // Contrast findings are decided on the element's rendered pixels, before the next pass resizes text.
+                for (line, element) in toMeasure {
+                    if let ratio = measuredContrast(of: element), ratio >= 4.5 {
+                        advisory.append(line + String(format: " — not gating: measured %.1f:1 on the rendered pixels (WCAG AA 4.5:1)", ratio))
+                    } else {
+                        let measured = measuredContrast(of: element).map { String(format: "%.1f:1", $0) } ?? "not measurable"
+                        failing.append(line + " — measured " + measured)
+                        XCTFail("Contrast below WCAG AA: " + line + " — measured " + measured)
+                    }
+                }
                 try app.performAccessibilityAudit(for: XCUIAccessibilityAuditType.all.subtracting(.contrast), handler)
             }
             let report = XCTAttachment(string: """
@@ -195,6 +213,38 @@ final class QualificationEvidenceTests: XCTestCase {
             add(report)
             app.terminate()
         }
+    }
+
+    /// WCAG contrast of an element as drawn: its background is the median luminance of its own
+    /// screenshot and its text the extreme 0.5 % furthest from that background.
+    private func measuredContrast(of element: XCUIElement) -> Double? {
+        guard element.exists, !element.frame.isEmpty, let image = element.screenshot().image.cgImage else { return nil }
+        let width = image.width, height = image.height
+        guard width > 0, height > 0, let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn: Bool = pixels.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
+        let linear: [Double] = (0...255).map { value in
+            let c = Double(value) / 255
+            return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        var luminance: [Double] = []
+        luminance.reserveCapacity(width * height)
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            luminance.append(0.2126 * linear[Int(pixels[i])] + 0.7152 * linear[Int(pixels[i + 1])] + 0.0722 * linear[Int(pixels[i + 2])])
+        }
+        luminance.sort()
+        let last = luminance.count - 1
+        let background = luminance[last / 2]
+        let high = luminance[Int(Double(last) * 0.995)], low = luminance[Int(Double(last) * 0.005)]
+        let text = abs(high - background) > abs(low - background) ? high : low
+        return (max(text, background) + 0.05) / (min(text, background) + 0.05)
     }
 
     /// Frames of the system's translucent bars, widened by the scroll-edge effect beside them.
