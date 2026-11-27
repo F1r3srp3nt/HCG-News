@@ -10,6 +10,11 @@ struct HCGNewsApp: App {
     @State private var container: AppContainer?
     @State private var router = Router()
 
+    init() {
+        // The website's typefaces (Newsreader, Manrope), before any view draws.
+        BrandFonts.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -62,8 +67,8 @@ struct ContainerRoot: View {
 struct LaunchView: View {
     var body: some View {
         ZStack {
-            Palette.masthead.ignoresSafeArea()
-            HCGMark(height: 72)
+            Palette.background.ignoresSafeArea()
+            NewsWordmark(logoHeight: 56)
         }
         .accessibilityLabel("HCG News is opening")
     }

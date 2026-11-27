@@ -13,6 +13,15 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     Masthead()
+                    SectionStrip()
+                        .padding(.horizontal, sizeClass == .regular ? 32 : 16)
+                    if home.breaking.current != nil {
+                        @Bindable var home = home
+                        BreakingNewsBanner(carousel: $home.breaking) { article in
+                            home.scrollAnchor = article.id
+                            router.open(.article(article.id))
+                        }
+                    }
                     content(home: home)
                         .padding(.horizontal, sizeClass == .regular ? 32 : 16)
                         .padding(.bottom, 32)
@@ -59,15 +68,6 @@ struct HomeView: View {
             if let error = home.refreshError {
                 InlineErrorRow(error: error) { await home.reload() }.padding(.top, 12)
             }
-            if home.breaking.current != nil {
-                BreakingNewsBanner(carousel: $home.breaking) { article in
-                    home.scrollAnchor = article.id
-                    router.open(.article(article.id))
-                }
-                .padding(.top, 14)
-            }
-            SectionStrip()
-
             if content.isEmpty {
                 MessageStateView(title: "No articles yet",
                                  message: env.platformAccount != nil
@@ -80,21 +80,20 @@ struct HomeView: View {
                 FeedHeader(title: content.hasEditorialFeatured ? "Featured" : "Top story")
                 link(lead, home: home) {
                     LeadArticleCard(summary: lead, wide: wide, download: env.saved.download(for: lead.id))
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                 }
-                RowSeparator()
                 // Further editorially featured stories (only when the publication marked them).
-                ForEach(content.featured.dropFirst()) { item in row(item, home: home) }
+                let moreFeatured = Array(content.featured.dropFirst())
+                if !moreFeatured.isEmpty {
+                    cardGrid(moreFeatured, home: home, wide: wide)
+                }
             }
 
             let latest = content.hasEditorialFeatured ? content.latest : Array(content.latest.dropFirst())
             if !latest.isEmpty {
                 FeedHeader(title: "Latest", trailing: home.lastUpdated.map { "Updated \(NewsDate.short($0))" })
-                ForEach(latest) { item in
-                    row(item, home: home)
-                        .onAppear {
-                            if item.id == latest.last?.id { Task { await home.loadMore() } }
-                        }
+                cardGrid(latest, home: home, wide: wide) { item in
+                    if item.id == latest.last?.id { Task { await home.loadMore() } }
                 }
                 if home.isLoadingMore {
                     ProgressView().frame(maxWidth: .infinity).padding()
@@ -117,35 +116,42 @@ struct HomeView: View {
             .simultaneousGesture(TapGesture().onEnded { home.scrollAnchor = item.id })
     }
 
-    private func row(_ item: ArticleSummary, home: HomeModel) -> some View {
-        VStack(spacing: 0) {
-            link(item, home: home) { ArticleRow(summary: item, download: env.saved.download(for: item.id)) }
-            RowSeparator()
+    /// Stream cards: one column on iPhone, an adaptive grid on wider screens (as on the website).
+    private func cardGrid(_ items: [ArticleSummary], home: HomeModel, wide: Bool,
+                          onAppear: @escaping (ArticleSummary) -> Void = { _ in }) -> some View {
+        LazyVGrid(columns: wide ? [GridItem(.adaptive(minimum: 300), spacing: 20, alignment: .top)] : [GridItem(.flexible())],
+                  alignment: .leading, spacing: 20) {
+            ForEach(items) { item in
+                link(item, home: home) { StreamCard(summary: item, download: env.saved.download(for: item.id)) }
+                    .onAppear { onAppear(item) }
+            }
         }
+        .padding(.top, 12)
     }
 }
 
-/// Horizontal section navigation from the content service's own sections.
+/// Category navigation, as in the website header: the publication's own sections as
+/// quiet text links, scrolling horizontally, over a hairline.
 struct SectionStrip: View {
     @Environment(NewsAppEnvironment.self) private var env
 
     var body: some View {
         if case .loaded(let nodes) = env.sections.state, !nodes.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(nodes) { node in
-                        NavigationLink(value: Route.section(slug: node.section.slug, name: node.section.name)) {
-                            Text(node.section.name)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Palette.primaryText)
-                                .padding(.horizontal, 14)
-                                .frame(minHeight: 44)
-                                .overlay(Capsule().strokeBorder(Palette.separator, lineWidth: 1))
+            VStack(spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 20) {
+                        ForEach(nodes) { node in
+                            NavigationLink(value: Route.section(slug: node.section.slug, name: node.section.name)) {
+                                Text(node.section.name)
+                                    .font(Typography.sans(.subheadline, weight: .medium))
+                                    .foregroundStyle(Palette.secondaryText)
+                                    .frame(minHeight: 44)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.vertical, 12)
+                Rectangle().fill(Palette.separator).frame(height: 1).accessibilityHidden(true)
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Sections")

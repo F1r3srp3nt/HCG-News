@@ -81,10 +81,28 @@ final class HCGNewsUITests: XCTestCase {
         let app = launch()
         let first = element(containing: "Breaking: Fixture headline 2", in: app)
         XCTAssertTrue(first.waitForExistence(timeout: 10))
-        app.buttons["Next breaking headline"].tap()
-        XCTAssertTrue(element(containing: "Breaking: Fixture breaking headline two", in: app).waitForExistence(timeout: 3))
-        app.buttons["Previous breaking headline"].tap()
-        XCTAssertTrue(first.waitForExistence(timeout: 3))
+        // The ticker advances by itself (like the website) and can be paused.
+        let pause = app.buttons["Pause breaking headlines"]
+        if pause.exists { pause.tap() }
+        XCTAssertTrue(app.buttons["Resume breaking headlines"].exists || !pause.exists, "pausable unless Reduce Motion/VoiceOver")
+        let next = app.buttons["Next breaking headline"]
+        let current = element(containing: "Breaking: Fixture breaking headline two", in: app).exists ? 1 : 0
+        next.tap()
+        let expected = current == 0 ? "Breaking: Fixture breaking headline two" : "Breaking: Fixture headline 2"
+        XCTAssertTrue(element(containing: expected, in: app).waitForExistence(timeout: 3))
+    }
+
+    func testEditionAndAppearanceAreIndependentChoices() {
+        let app = launch()
+        XCTAssertTrue(element(containing: "Future Edition", in: app).waitForExistence(timeout: 10), "Future is the default edition")
+        openSettings(app)
+        app.buttons["settings-edition"].firstMatch.tap()
+        app.buttons["Classic"].firstMatch.tap()
+        app.buttons["settings-appearance"].firstMatch.tap()
+        app.buttons["Dark"].firstMatch.tap()
+        XCTAssertTrue(element(containing: "Classic Edition", in: app).waitForExistence(timeout: 5))
+        if app.buttons["Done"].exists { app.buttons["Done"].tap() }
+        XCTAssertTrue(element(containing: "Classic Edition", in: app).waitForExistence(timeout: 5), "masthead follows the edition")
     }
 
     func testArticleShowsDisclosureCorrectionUnsupportedNoticeAndSources() {

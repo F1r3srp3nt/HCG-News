@@ -144,9 +144,7 @@ struct RegularRootView: View {
             .navigationTitle("HCG News")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HCGMark(height: 22)
-                        .padding(.horizontal, 4)
-                        .background(Color.black, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    NewsWordmark(logoHeight: 20)
                 }
             }
             .task { await env.sections.loadIfNeeded() }

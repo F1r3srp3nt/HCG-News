@@ -8,6 +8,7 @@ struct SettingsView: View {
     @Environment(NewsAppEnvironment.self) private var env
     @Environment(Router.self) private var router
     @AppStorage(AppearanceChoice.storageKey) private var appearanceRaw = AppearanceChoice.system.rawValue
+    @AppStorage(EditionChoice.storageKey) private var editionRaw = EditionChoice.defaultEdition.rawValue
 
     var body: some View {
         Form {
@@ -20,10 +21,21 @@ struct SettingsView: View {
                     }
                 }
             }
-            Section("Reading") {
+            Section {
+                Picker("Edition", selection: $editionRaw) {
+                    ForEach(EditionChoice.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .accessibilityIdentifier("settings-edition")
                 Picker("Appearance", selection: $appearanceRaw) {
                     ForEach(AppearanceChoice.allCases) { Text($0.title).tag($0.rawValue) }
                 }
+                .accessibilityIdentifier("settings-appearance")
+            } header: {
+                Text("Edition and appearance")
+            } footer: {
+                Text("\((EditionChoice(rawValue: editionRaw) ?? .defaultEdition).editionName): \((EditionChoice(rawValue: editionRaw) ?? .defaultEdition).summary) Both editions work in Light and Dark; System follows your device.")
+            }
+            Section("Reading") {
                 NavigationLink("Text and layout", value: SettingsRoute.reading)
                 NavigationLink("Notifications", value: SettingsRoute.notifications)
             }
@@ -462,10 +474,8 @@ struct AboutView: View {
         Form {
             Section {
                 VStack(spacing: 16) {
-                    HCGMark(height: 64)
-                        .padding(12)
-                        .background(Color.black, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    Text("HCG News").font(Typography.headline(.title2))
+                    NewsWordmark(logoHeight: 56)
+                    Text("The future of information.").font(Typography.serifItalic(.body)).foregroundStyle(Palette.secondaryText)
                     Text("Version \(AppBootstrap.appVersion) · development build, not released")
                         .font(.footnote).foregroundStyle(Palette.secondaryText)
                 }

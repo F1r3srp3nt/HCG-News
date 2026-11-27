@@ -269,14 +269,14 @@ struct ArticleHeader: View {
             KickerLine(editorialType: summary.editorialType, sectionName: summary.section?.name,
                        restricted: summary.access == .restricted, isDemo: summary.isDemo)
             Text(summary.headline)
-                .font(Typography.headline(.largeTitle, weight: .bold))
+                .font(Typography.headline(.largeTitle, weight: .semibold))
                 .foregroundStyle(Palette.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
                 .accessibilityAddTraits(.isHeader)
             if let standfirst = summary.standfirst {
                 Text(standfirst)
-                    .font(Typography.headline(.title3, weight: .regular))
+                    .font(Typography.serifItalic(.title3))
                     .foregroundStyle(Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
@@ -285,13 +285,14 @@ struct ArticleHeader: View {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(summary.authors) { author in
                     HStack(spacing: 4) {
-                        Text("By \(author.name)").font(.subheadline.weight(.semibold))
-                        if let title = author.title { Text("· \(title)").font(.subheadline) }
+                        Text("By \(author.name)").font(Typography.sans(.subheadline, weight: .semibold))
+                        if let title = author.title { Text("· \(title)").font(Typography.sans(.subheadline)) }
                     }
                     .foregroundStyle(Palette.primaryText)
                 }
                 if let published = summary.publishedAt {
-                    Text("Published \(NewsDate.full(published))").font(Typography.meta).foregroundStyle(Palette.secondaryText)
+                    Text("Published \(NewsDate.article(published))").font(Typography.meta).foregroundStyle(Palette.secondaryText)
+                        .accessibilityLabel("Published \(NewsDate.full(published))")
                 } else {
                     Text("Not published").font(Typography.meta).foregroundStyle(Palette.warning)
                 }
