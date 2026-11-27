@@ -134,6 +134,7 @@ struct LeadArticleCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(CardAccessibility.label(summary, download: download))
         .accessibilityHint("Opens the article")
+        .accessibilityIdentifier("article-card")
     }
 }
 
@@ -179,6 +180,7 @@ struct StreamCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(CardAccessibility.label(summary, download: download))
         .accessibilityHint("Opens the article")
+        .accessibilityIdentifier("article-card")
     }
 }
 

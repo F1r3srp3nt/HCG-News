@@ -1,6 +1,6 @@
 # HCG News for iPhone and iPad — architecture
 
-App version 0.2.0 (2). Development build, **not released**.
+App version 1.0.0 (3). Release candidate, **not submitted**. Design system: [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
 
 ## 1. Layout
 
@@ -12,7 +12,7 @@ HCGNews/
   project.yml                    XcodeGen fallback
   HCGNews/                       SwiftUI app (file-system-synchronised group)
     App/                         entry point, AppContainer injection, adaptive root, Router, keyboard commands
-    Design/Theme.swift           palette (black/charcoal/silver/white + cyan for actions), typography, reader settings
+    Design/Theme.swift           Classic/Future editions × Light/Dark palettes, brand fonts, typography, reader settings
     Components/                  masthead/brand, cards, labels, images + photo viewer, audio + read-aloud, states
     Features/Home|Sections|Search|Saved|Article     reader
     Features/Settings            Settings, Advanced (configuration import, checks, diagnostics), About
@@ -20,7 +20,9 @@ HCGNews/
     Features/Newsroom            workspace, draft editor, administration
     Platform/                    ASWebAuthenticationSession adapter
     Preview Content/             DEBUG-only development fixtures (separate storage folder)
-    Resources/Assets.xcassets    HCGNewsMark (supplied HCG logo), AppIcon, HCGLogo/HCGLogoTrimmed (publisher)
+    Resources/Assets.xcassets    HCGClassicLogo / HCGFutureLogo (transparent, Light/Dark), FutureCommandCenter, AppIcon
+    Resources/Fonts              Newsreader, Manrope (SIL OFL) · Resources/PrivacyInfo.xcprivacy
+  Supporting/HCGNews-Info.plist  merged Info.plist keys (export compliance)
   HCGNewsUITests/                14 XCUITests (fixtures + real unconfigured app)
   HCGNewsKit/                    Swift package, Foundation only; builds and tests on Linux
     HCGTransport                 HTTP seam, JSON dates, secret guard, HCG host policy
@@ -37,7 +39,7 @@ HCGNews/
                                  NewsroomService (proposed API client), NewsroomGate
     NewsAppModel                 ConfigurationStore, AppContainer/NewsAppEnvironment, screen models,
                                  Account/Connection models, Newsroom/Editor/Admin models, event log, diagnostics
-    Tests/                       187 XCTest cases
+    Tests/                       188 XCTest cases
 ```
 
 ## 2. Composition and configuration
@@ -112,16 +114,7 @@ Unchanged from 0.1.0, with one addition:
 
 ## 7. Design
 
-| Token | Light | Dark |
-|---|---|---|
-| Background | #FAFAF8 | #0B0B0C |
-| Surface (charcoal) | #F0F0EE | #17181A |
-| Primary text | #121212 | #F2F2F2 |
-| Secondary text | #4A4B50 | #A9ABB0 |
-| Silver (rules, quiet labels) | #8A8C91 | #8E9096 |
-| Accent (actions, status only) | #007C99 | #3FD0E0 |
+The website's Classic and Future Editions, each in Light and Dark, with Increase Contrast variants; Newsreader and Manrope typefaces; transparent official logos. All tokens, sources and contrast checks are in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
 
-- Increase Contrast variants exist for text, silver, separators and accent.
-- Headlines use the serif face (New York); article body text is serif or sans, by preference.
-- All text uses Dynamic Type. The reader's text size can be offset further, up to the accessibility sizes.
-- Reduce Motion removes transitions. There is no auto-advance or marquee anywhere.
+- All text uses Dynamic Type (`relativeTo:`). The reader's text size can be offset further, up to the accessibility sizes.
+- Reduce Motion removes transitions. The breaking ticker advances only when Reduce Motion and VoiceOver are off, and can be paused.

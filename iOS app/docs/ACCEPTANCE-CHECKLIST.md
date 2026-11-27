@@ -1,14 +1,29 @@
 # Manual acceptance checklist (simulator and device)
 
-For app 0.2.0 (2). Run on **an iPhone and an iPad** (simulator first, then a device), in **Light, Dark and System** appearance.
+For app 1.0.0 (3). Run on **an iPhone and an iPad** (simulator first, then a device), in **Light, Dark and System** appearance.
 
 - **F** = with development fixtures: scheme environment variable `HCGNEWS_UI_TEST_FIXTURES=1`, plus optionally `HCGNEWS_UI_TEST_OFFLINE=1`, `HCGNEWS_UI_TEST_EMPTY=1` and `HCGNEWS_UI_TEST_RESET=1`.
 - **L** = live: the bundled HCG platform configuration, against the real publication (see INTEGRATION-REPORT.md). Use **test content only** for anything that writes: never edit, publish or archive a real story to test.
 
 Mark each item ☐ pass / ☐ fail / ☐ not run.
 
+## Editions and appearance (1.0.0)
+- [ ] Settings › Edition and appearance: Edition (Future, Classic) and Appearance (System, Light, Dark) change independently. All 6 combinations look right on Home, an article, Sections, Search, Saved, Settings and the Newsroom.
+- [ ] Logo: Future shows the futuristic HCG logo, Classic the classic serif one. Both are transparent (no box), with dark lettering in Light and silver in Dark. Never stretched.
+- [ ] Wordmark: HCG, hairline separator, italic serif "News", in the masthead and the navigation bar.
+- [ ] Fonts: headlines in Newsreader serif, labels in Manrope. With the largest Dynamic Type, everything scales and nothing clips.
+- [ ] Masthead: date line, "FUTURE EDITION" (Future only), the publication line and "The future of information."
+  - [ ] Classic shows "HCG News."
+  - [ ] Future shows the command-centre image in Dark and a quiet tinted panel in Light.
+- [ ] Breaking ticker: red bar; advances about every 7 s with several items.
+  - [ ] Pause and Resume work.
+  - [ ] With Reduce Motion or VoiceOver on, it doesn't advance, and Next still works.
+- [ ] Cards: 16:10 images; "HCG News" placeholder when there is no image; section eyebrow; type tag; "By Author · 27 Nov 2026".
+- [ ] Tab bar (built with Xcode 26 on iOS 26): Liquid Glass, with content scrolling beneath.
+- [ ] Increase Contrast: text and separators become stronger in all 4 combinations.
+
 ## Brand and layout
-- [ ] F — Masthead: the HCG logo (silver with cyan light lines) on black, at its own proportions (never stretched or cropped), "NEWS" beside it, and today's date.
+- [ ] F — Masthead: the edition's HCG logo on the page background (no black box), at its own proportions, the separator and "News" beside it, and today's date.
 - [ ] F — The app icon on the home screen, in Settings and in Spotlight is the supplied HCG News icon (brushed-silver newspaper with "HCG NEWS" and cyan edges), on iPhone and iPad.
 - [ ] F — About and Account show "A Hakmi Capital Group publication" with the Hakmi Capital Group mark.
 - [ ] F — Cyan appears only on actions and status (buttons, links, the breaking marker, download state). There are no large blue panels.

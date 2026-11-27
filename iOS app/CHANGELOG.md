@@ -2,7 +2,35 @@
 
 Version numbers change only on purpose and are recorded here: `MARKETING_VERSION` (`CURRENT_PROJECT_VERSION`). None of these builds has been released, uploaded to TestFlight or submitted.
 
-## Unreleased — real HCG integration (version unchanged: 0.2.0 (2))
+## 1.0.0 (3) — 27 November 2026 — release candidate (not submitted)
+
+Version raised from 0.2.0 (2) to **1.0.0 (3)** for the first App Store submission. Nothing was uploaded to TestFlight or the App Store.
+
+**Editorial identity, from news.hakmicapitalgroup.com** ([docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md))
+- Logos:
+  - The website's classic metallic and futuristic HCG logos, as transparent assets with Light (dark lettering) and Dark (silver) variants. The original geometry is kept.
+  - The black boxes behind the logo are removed.
+- The wordmark: HCG, a hairline separator, then "News" in italic Newsreader.
+- The website's typefaces, Newsreader and Manrope, are bundled under the SIL OFL.
+- **Classic and Future Editions**, chosen separately from System, Light or Dark. The palettes come from the website's colour tokens. Every text colour passes WCAG AA (body text AAA), including Increase Contrast.
+- Masthead: date and edition line, the publication line, and "The future of information."
+  - Classic: the "HCG News." hero.
+  - Future: the command-centre backdrop.
+- A breaking-news ticker like the website's. It is pausable, and doesn't advance under Reduce Motion or VoiceOver.
+- Featured story, stream cards with the HCG News placeholder, category navigation, section eyebrows and type tags, and "By Author · 27 Nov 2026" bylines.
+- Native navigation, the tab bar (Liquid Glass with the iOS 26 SDK), Saved, Search, Account and the Newsroom are unchanged. There is no web view.
+
+**Release preparation** ([docs/APP-STORE-RELEASE.md](docs/APP-STORE-RELEASE.md))
+- Privacy manifest (`PrivacyInfo.xcprivacy`) and export compliance (`ITSAppUsesNonExemptEncryption = NO`).
+- Copyright without "Development build".
+- About: terms, about and privacy links, the publication's affiliation disclosure, and font acknowledgements.
+- Drafts: App Store metadata, App Privacy answers, a privacy-policy section for the app, and signing and distribution steps.
+- A screenshot test that captures only articles cleared by editorial review (the allowlist works in DEBUG builds only).
+- An editorial review of all 13 published articles ([docs/EDITORIAL-REVIEW-2026-11-27.md](docs/EDITORIAL-REVIEW-2026-11-27.md)). Two need urgent editorial action, and none is cleared for screenshots until fixes are made.
+
+**Tests:** 188 package tests (1 new). UI tests were updated for the ticker, and a new one checks that the edition and appearance are independent choices.
+
+## Earlier, unreleased: real HCG integration (version then 0.2.0 (2))
 
 Connected to the real publication and HCG identity, using the contracts the HCG News website and HCG ONE already use. Details: [docs/INTEGRATION-REPORT.md](docs/INTEGRATION-REPORT.md).
 
@@ -50,7 +78,7 @@ One certain compile error and six other issues were found. All seven were fixed:
 6. Whole-row taps in forms could trigger buttons: "Discard" (now confirmed), "From Headline", "Choose Image…", and the password-reset link. These buttons are now borderless, and sign-in is no longer inside a form row.
 7. Picking the same photo twice did nothing. The picker now resets.
 
-## Unreleased — app icon (version unchanged: 0.2.0 (2))
+## Earlier, unreleased: app icon (version then 0.2.0 (2))
 
 - The app icon is now the supplied HCG News icon set (from `HCG-News-Icons.zip`), installed byte-for-byte as `AppIcon.appiconset`. It has 18 slots (8 iPhone, 9 iPad, 1 App Store), using 13 opaque RGB PNGs.
 - It replaces the single 1024 px icon generated in 0.2.0. `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` is unchanged (Debug and Release). The bundle id, signing, deployment target, version and build number are unchanged.

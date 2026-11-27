@@ -24,10 +24,16 @@ Version numbers are changed only on purpose and are recorded in [`../CHANGELOG.m
 
 | Setting | Value |
 |---|---|
-| `MARKETING_VERSION` | `0.2.0` |
-| `CURRENT_PROJECT_VERSION` | `2` |
+| `MARKETING_VERSION` | `1.0.0` |
+| `CURRENT_PROJECT_VERSION` | `3` |
 
 Both are set in the app target's Debug and Release configurations, and in the UI-test target to match. `project.yml` mirrors them.
+
+## Release files
+
+- `Supporting/HCGNews-Info.plist` is outside the synchronised `HCGNews` folder, so it is not copied as a resource. It is merged with the generated Info.plist through `INFOPLIST_FILE`, and adds `ITSAppUsesNonExemptEncryption = NO`.
+- `HCGNews/Resources/PrivacyInfo.xcprivacy` is the privacy manifest. See [APP-STORE-RELEASE.md](APP-STORE-RELEASE.md) §4.
+- `HCGNews/Resources/Fonts` holds Newsreader and Manrope with their OFL licences. They are registered at launch, so no `UIAppFonts` entry is needed.
 
 ## Things that would change packaging (none are needed today)
 
