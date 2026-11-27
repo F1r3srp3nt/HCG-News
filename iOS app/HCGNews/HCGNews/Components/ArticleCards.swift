@@ -29,11 +29,16 @@ struct KickerLine: View {
     var download: OfflineEntry?
     /// The publication's "Demo content" marking.
     var isDemo = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: 8) {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 8))
+        layout {
             if let sectionName {
                 Text(sectionName.uppercased()).font(Typography.kicker).foregroundStyle(Palette.silver)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if let editorialType { EditorialLabel(type: editorialType) }
             if isDemo {
@@ -68,6 +73,7 @@ struct MetaLine: View {
             Text(parts.joined(separator: " · "))
                 .font(Typography.meta)
                 .foregroundStyle(Palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

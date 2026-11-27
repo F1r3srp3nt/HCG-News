@@ -93,7 +93,7 @@ struct MediaPlaceholder: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("No featured image")
+        .accessibilityLabel(section.map { "HCG News, \($0). No featured image" } ?? "HCG News. No featured image")
     }
 }
 
@@ -184,11 +184,13 @@ struct ArticleFigure: View {
                 VStack(alignment: .leading, spacing: 2) {
                     if let caption = image.caption {
                         Text(caption).font(.footnote).foregroundStyle(Palette.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     if let credit = image.credit {
                         Text(credit)
                             .font(.caption)
-                            .foregroundStyle(Palette.silver)
+                            .foregroundStyle(Palette.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
                             .accessibilityLabel("Credit: \(credit)")
                     }
                 }

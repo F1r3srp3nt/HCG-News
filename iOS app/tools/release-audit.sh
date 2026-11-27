@@ -57,7 +57,7 @@ echo
 echo "## 3. Required-reason APIs referenced by the executable"
 echo
 SYMS=$(xcrun nm -u "$BIN" 2>/dev/null; strings -a "$BIN")
-probe() { if echo "$SYMS" | grep -qE "$2"; then echo "| $1 | **referenced** | $3 |"; else echo "| $1 | not found | $3 |"; fi; }
+probe() { if grep -qE "$2" <<< "$SYMS"; then echo "| $1 | **referenced** | $3 |"; else echo "| $1 | not found | $3 |"; fi; }
 echo "| API category | In binary | Declared in manifest |"
 echo "|---|---|---|"
 probe "UserDefaults" "NSUserDefaults|UserDefaults" "CA92.1"
@@ -81,11 +81,11 @@ echo
 echo "## 5. Cryptography (export compliance)"
 echo
 echo '```'
-echo "$SYMS" | grep -oE '_CC_[A-Z0-9_]+|_Sec(Item|Key|Trust)[A-Za-z]*|CryptoKit|SHA256|_CCCrypt[A-Za-z]*|AES|ChaChaPoly' | sort -u | head -40
+grep -oE '_CC_[A-Z0-9_]+|_Sec(Item|Key|Trust)[A-Za-z]*|CryptoKit|SHA256|_CCCrypt[A-Za-z]*|AES\.GCM|ChaChaPoly' <<< "$SYMS" | sort -u | head -40
 echo '```'
 echo
 echo "Expected: hashing (SHA-256 for sign-in PKCE), Keychain (SecItem) and system TLS only — all exempt."
-check "No custom encryption (CCCrypt / AES / ChaChaPoly not used)" '! echo "$SYMS" | grep -qE "_CCCrypt|AES\.GCM|ChaChaPoly"'
+check "No custom encryption (CCCrypt / AES.GCM / ChaChaPoly not used)" '! grep -qE "_CCCrypt|AES\.GCM|ChaChaPoly" <<< "$SYMS"'
 echo
 
 echo "## 6. Linked frameworks and embedded code"
@@ -107,21 +107,25 @@ if [ -f "$APP/Assets.car" ]; then
   echo
   echo "Compiled asset catalog (name · appearance · size):"
   echo '```'
-  echo "$INFO" | python3 -c '
+  ASSETPY=$(mktemp)
+  cat > "$ASSETPY" <<'PY'
 import json, sys
 seen = set()
 for a in json.load(sys.stdin):
     n = a.get("Name")
-    if not n: continue
+    if not n:
+        continue
     key = (n, a.get("Appearance", "any"), a.get("PixelWidth"), a.get("PixelHeight"))
-    if key in seen: continue
+    if key in seen:
+        continue
     seen.add(key)
-    print(f"{n:24} {a.get(\"Appearance\", \"any\"):28} {a.get(\"PixelWidth\")}x{a.get(\"PixelHeight\")}")
-' | sort | head -60
+    print(f"{n:24} {a.get('Appearance', 'any'):28} {a.get('PixelWidth')}x{a.get('PixelHeight')}")
+PY
+  python3 "$ASSETPY" <<< "$INFO" | sort | head -60
   echo '```'
-  check "HCGClassicLogo has Light and Dark variants" 'echo "$INFO" | grep -q HCGClassicLogo && echo "$INFO" | python3 -c "import json,sys;d=json.load(sys.stdin);a=[x.get(\"Appearance\",\"\") for x in d if x.get(\"Name\")==\"HCGClassicLogo\"];sys.exit(0 if any(\"Dark\" in v for v in a) else 1)"'
+  check "HCGClassicLogo has Light and Dark variants" 'grep -q HCGClassicLogo <<< "$INFO" && echo "$INFO" | python3 -c "import json,sys;d=json.load(sys.stdin);a=[x.get(\"Appearance\",\"\") for x in d if x.get(\"Name\")==\"HCGClassicLogo\"];sys.exit(0 if any(\"Dark\" in v for v in a) else 1)"'
   check "HCGFutureLogo has Light and Dark variants" 'echo "$INFO" | python3 -c "import json,sys;d=json.load(sys.stdin);a=[x.get(\"Appearance\",\"\") for x in d if x.get(\"Name\")==\"HCGFutureLogo\"];sys.exit(0 if any(\"Dark\" in v for v in a) else 1)"'
-  check "App icon compiled into the catalog" 'echo "$INFO" | grep -q "\"Name\" : \"AppIcon\""'
+  check "App icon compiled into the catalog" 'grep -q "\"Name\" : \"AppIcon\"" <<< "$INFO"'
 fi
 check "App icon declared in Info.plist (CFBundleIcons)" 'plutil -p "$APP/Info.plist" | grep -q CFBundleIcons'
 echo

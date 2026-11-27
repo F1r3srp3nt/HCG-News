@@ -49,7 +49,9 @@ struct NewsroomDeskView: View {
     private var content: some View {
         @Bindable var desk = desk
         switch desk.phase {
-        case .idle, .loading where desk.articles.isEmpty:
+        case .idle:
+            LoadingStateView()
+        case .loading where desk.articles.isEmpty:
             LoadingStateView()
         case .failed(let message) where desk.articles.isEmpty:
             MessageStateView(title: "Newsroom unavailable", message: message, systemImage: "exclamationmark.triangle",

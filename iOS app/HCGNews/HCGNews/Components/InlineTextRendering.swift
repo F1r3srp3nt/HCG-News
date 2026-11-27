@@ -12,12 +12,12 @@ extension InlineText {
             if run.bold { intent.insert(.stronglyEmphasized) }
             if run.italic { intent.insert(.emphasized) }
             if run.code { intent.insert(.code) }
-            if !intent.isEmpty { piece.inlinePresentationIntent = intent }
+            if !intent.isEmpty { piece[AttributeScopes.FoundationAttributes.InlinePresentationIntentAttribute.self] = intent }
             if run.underline {
                 piece[AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.self] = .single
             }
             if let link = run.link, LinkPolicy.allowedExternalURL(link) != nil {
-                piece.link = link
+                piece[AttributeScopes.FoundationAttributes.LinkAttribute.self] = link
                 // Underlined as well as tinted, so links don't rely on colour alone.
                 piece[AttributeScopes.SwiftUIAttributes.UnderlineStyleAttribute.self] = .single
             }

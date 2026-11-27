@@ -96,7 +96,7 @@ jobs:
           path: results-${{ matrix.device }}.xcresult
           retention-days: 14
       - name: Fail if tests failed
-        if: steps.test.outcome == 'failure'
+        if: always() && steps.test.outcome == 'failure'
         run: exit 1
 
   release-audit:

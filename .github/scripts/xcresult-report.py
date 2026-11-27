@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Summarises an .xcresult bundle (Xcode 16+ xcresulttool) and exports its screenshots with readable names.
 Usage: xcresult-report.py <bundle.xcresult> <out dir>"""
+import re
 import json, os, shutil, subprocess, sys
 
 bundle, out = sys.argv[1], sys.argv[2]
@@ -45,6 +46,8 @@ if os.path.exists(manifest):
             name = a.get("suggestedHumanReadableName") or a["exportedFileName"]
             ext = os.path.splitext(a["exportedFileName"])[1]
             base = name if name.endswith(ext) else name + ext
-            shutil.copy(src, os.path.join(out, base.replace("/", "-")))
+            # Artifact uploads reject " : < > | * ? and line breaks in file names.
+            safe = re.sub(r'[\\/"\':<>|*?\r\n`]+', "-", base)
+            shutil.copy(src, os.path.join(out, safe))
             count += 1
 print(f"ATTACHMENTS exported: {count}")

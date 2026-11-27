@@ -68,6 +68,7 @@ struct Masthead: View {
                     .font(Typography.sans(.caption2, weight: .medium))
                     .tracking(0.6)
                     .foregroundStyle(Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.top, 16)
 
@@ -78,8 +79,13 @@ struct Masthead: View {
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("HCG News, \(edition.editionName). \(NewsDate.day(Date())). The future of information.")
+        .accessibilityLabel(mastheadLabel)
         .accessibilityAddTraits(.isHeader)
+    }
+
+    /// Everything the masthead shows, in reading order (it is one accessibility element).
+    private var mastheadLabel: String {
+        "HCG News, \(edition.editionName). A Hakmi Capital Group publication. \(NewsDate.day(Date())). The future of information. Technology, business, markets and the ideas shaping tomorrow."
     }
 
     private var dateLine: some View {
@@ -118,10 +124,10 @@ struct Masthead: View {
             }
             Text("The future of information.")
                 .font(Typography.serifItalic(.title3))
-                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.88) : Palette.silver)
+                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.94) : Palette.silver)
             Text("Technology, business, markets and the ideas shaping tomorrow.")
                 .font(Typography.sans(.footnote))
-                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.72) : Palette.secondaryText)
+                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.86) : Palette.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,6 +161,9 @@ struct FutureBackdrop: View {
             Image("FutureCommandCenter")
                 .resizable()
                 .aspectRatio(contentMode: .fill)
+                // An even scrim first, so the hero text keeps at least 4.5:1 over the brightest
+                // part of the artwork; then the website's left-to-right and bottom shading.
+                .overlay(Color.black.opacity(0.5))
                 .overlay(
                     LinearGradient(colors: [Color.black.opacity(0.92), Color.black.opacity(0.62), Color.black.opacity(0.25)],
                                    startPoint: .leading, endPoint: .trailing))
