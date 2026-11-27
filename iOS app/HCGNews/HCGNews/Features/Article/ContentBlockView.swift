@@ -54,7 +54,7 @@ struct ContentBlockView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
                         Text(paragraph.attributed)
-                            .font(Typography.headline(.title3, weight: .regular).italic())
+                            .font(Typography.serifItalic(.title3))
                             .foregroundStyle(Palette.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
                             .textSelection(.enabled)

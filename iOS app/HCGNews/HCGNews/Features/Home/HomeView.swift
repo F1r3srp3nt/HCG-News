@@ -16,8 +16,7 @@ struct HomeView: View {
                     SectionStrip()
                         .padding(.horizontal, sizeClass == .regular ? 32 : 16)
                     if home.breaking.current != nil {
-                        @Bindable var home = home
-                        BreakingNewsBanner(carousel: $home.breaking) { article in
+                        BreakingNewsBanner(carousel: Bindable(home).breaking) { article in
                             home.scrollAnchor = article.id
                             router.open(.article(article.id))
                         }

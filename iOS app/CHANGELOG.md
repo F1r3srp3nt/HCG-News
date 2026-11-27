@@ -30,6 +30,17 @@ Version raised from 0.2.0 (2) to **1.0.0 (3)** for the first App Store submissio
 
 **Tests:** 188 package tests (1 new). UI tests were updated for the ticker, and a new one checks that the edition and appearance are independent choices.
 
+**Independent compile review** (read-only; there's no Xcode here). It found no certain compile errors. These issues were found and fixed:
+- **Changing the edition reset too much.** It re-identified the whole app, which closed Settings on iPad, flashed the Settings sheet on iPhone, re-ran account restore and reset app state.
+  - Now only the navigation containers and presented content are redrawn.
+  - Navigation paths live in the Router, so the reader stays where they were.
+- A shadowed `@Bindable` local on Home is replaced with `Bindable(home).breaking`.
+- Quotations now use the real italic Newsreader face, instead of a slanted roman.
+- UI tests:
+  - a scrolling helper, because taller cards push fixture headlines off screen;
+  - the screenshot test waits for "LATEST";
+  - on iPad, the screenshot test navigates through the sidebar.
+
 ## Earlier, unreleased: real HCG integration (version then 0.2.0 (2))
 
 Connected to the real publication and HCG identity, using the contracts the HCG News website and HCG ONE already use. Details: [docs/INTEGRATION-REPORT.md](docs/INTEGRATION-REPORT.md).

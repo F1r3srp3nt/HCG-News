@@ -313,18 +313,24 @@ enum ReadingSize {
 // MARK: - Root styling
 
 struct ThemedRoot: ViewModifier {
+    /// True for presented content (sheets, covers): it is redrawn when the edition changes.
+    /// False at the app root, so a change never tears down presentations or app state.
+    var refreshesOnEditionChange = true
     @AppStorage(AppearanceChoice.storageKey) private var appearanceRaw = AppearanceChoice.system.rawValue
     @AppStorage(EditionChoice.storageKey) private var editionRaw = EditionChoice.defaultEdition.rawValue
 
     func body(content: Content) -> some View {
         content
-            // Colours resolve the edition when drawn; a new identity redraws everything
-            // (navigation state lives in the Router, so it is kept).
-            .id(editionRaw)
+            .id(refreshesOnEditionChange ? editionRaw : "app")
             .environment(\.edition, EditionChoice(rawValue: editionRaw) ?? .defaultEdition)
             .tint(Palette.accent)
             .preferredColorScheme((AppearanceChoice(rawValue: appearanceRaw) ?? .system).colorScheme)
     }
+}
+
+struct EditionRefresh: ViewModifier {
+    @AppStorage(EditionChoice.storageKey) private var editionRaw = EditionChoice.defaultEdition.rawValue
+    func body(content: Content) -> some View { content.id(editionRaw) }
 }
 
 private struct EditionKey: EnvironmentKey {
@@ -340,7 +346,15 @@ extension EnvironmentValues {
 }
 
 extension View {
+    /// Theme for presented content (sheets, covers, previews).
     func hcgThemed() -> some View { modifier(ThemedRoot()) }
+
+    /// Theme for the app's root window content. Never re-identified.
+    func hcgThemedApp() -> some View { modifier(ThemedRoot(refreshesOnEditionChange: false)) }
+
+    /// Redraws this navigation container when the edition changes: edition colours are resolved
+    /// when drawn. Navigation paths live in the Router, so the reader stays where they were.
+    func editionRefreshing() -> some View { modifier(EditionRefresh()) }
 
     func screenBackground() -> some View {
         scrollContentBackground(.hidden).background(Palette.background.ignoresSafeArea())

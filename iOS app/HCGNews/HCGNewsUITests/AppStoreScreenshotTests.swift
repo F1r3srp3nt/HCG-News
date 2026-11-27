@@ -32,8 +32,10 @@ final class AppStoreScreenshotTests: XCTestCase {
 
     private func go(_ app: XCUIApplication, _ tab: String) {
         let button = app.tabBars.buttons[tab]
-        if button.waitForExistence(timeout: 3) { button.tap() }
-        else { app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", tab)).firstMatch.tap() }
+        if button.waitForExistence(timeout: 3) { button.tap(); return }
+        // iPad sidebar (avoid the Home screen's "Sections" category strip, which has the same label).
+        let row = app.collectionViews.staticTexts[tab].firstMatch
+        if row.waitForExistence(timeout: 3) { row.tap() }
     }
 
     func testCaptureScreenshots() throws {
@@ -42,7 +44,7 @@ final class AppStoreScreenshotTests: XCTestCase {
             for appearance in ["light", "dark"] {
                 let app = launch(edition: edition, appearance: appearance, ids: ids)
                 let tag = "\(edition)-\(appearance)"
-                XCTAssertTrue(app.staticTexts["Latest"].waitForExistence(timeout: 20) || app.staticTexts["LATEST"].waitForExistence(timeout: 5))
+                XCTAssertTrue(app.staticTexts["LATEST"].waitForExistence(timeout: 20) || app.staticTexts["FEATURED"].exists)
                 sleep(2) // let images load
                 capture(app, "01-home-\(tag)")
                 app.swipeUp()

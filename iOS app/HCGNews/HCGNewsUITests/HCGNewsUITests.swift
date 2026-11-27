@@ -40,6 +40,19 @@ final class HCGNewsUITests: XCTestCase {
         }
     }
 
+    /// Finds an element on a scrolling screen: waits for content, then swipes up until the
+    /// element is on screen (lazy stacks don't create far-off cards until scrolled near).
+    private func scrolledTo(_ text: String, in app: XCUIApplication, attempts: Int = 12) -> XCUIElement {
+        let target = element(containing: text, in: app)
+        _ = element(containing: "Fixture", in: app).waitForExistence(timeout: 10)
+        var tries = 0
+        while !(target.exists && target.isHittable) && tries < attempts {
+            app.swipeUp()
+            tries += 1
+        }
+        return target
+    }
+
     private func element(containing text: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
@@ -72,9 +85,8 @@ final class HCGNewsUITests: XCTestCase {
     func testEditorialLabelsIncludingSponsoredAndAnnouncement() {
         let app = launch()
         XCTAssertTrue(element(containing: "Fixture headline", in: app).waitForExistence(timeout: 10))
-        app.swipeUp()
-        XCTAssertTrue(element(containing: "Sponsored content", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(element(containing: "HCG Announcement", in: app).exists)
+        XCTAssertTrue(scrolledTo("Sponsored content", in: app).exists)
+        XCTAssertTrue(scrolledTo("HCG Announcement", in: app).exists)
     }
 
     func testBreakingHeadlineNavigation() {
@@ -107,8 +119,8 @@ final class HCGNewsUITests: XCTestCase {
 
     func testArticleShowsDisclosureCorrectionUnsupportedNoticeAndSources() {
         let app = launch()
-        let lead = element(containing: "Fixture long headline", in: app)
-        XCTAssertTrue(lead.waitForExistence(timeout: 10))
+        let lead = scrolledTo("Fixture long headline", in: app)
+        XCTAssertTrue(lead.exists)
         lead.tap()
         XCTAssertTrue(element(containing: "Fixture disclosure.", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(element(containing: "Fixture correction", in: app).exists)
@@ -120,16 +132,16 @@ final class HCGNewsUITests: XCTestCase {
 
     func testSummaryOnlyArticleLinksToWeb() {
         let app = launch()
-        let row = element(containing: "Fixture headline 11", in: app)
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        let row = scrolledTo("Fixture headline 11", in: app)
+        XCTAssertTrue(row.exists)
         row.tap()
         XCTAssertTrue(element(containing: "Only a summary is available", in: app).waitForExistence(timeout: 5))
     }
 
     func testBookmarkPersistsAfterRelaunch() {
         var app = launch(reset: true)
-        let row = element(containing: "Fixture headline 5", in: app)
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        let row = scrolledTo("Fixture headline 5", in: app)
+        XCTAssertTrue(row.exists)
         row.tap()
         XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5))
         app.buttons["Save"].tap()
@@ -143,8 +155,8 @@ final class HCGNewsUITests: XCTestCase {
 
     func testDownloadedArticleOpensAfterRelaunchOffline() {
         var app = launch(reset: true)
-        let row = element(containing: "Fixture headline 6", in: app)
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        let row = scrolledTo("Fixture headline 6", in: app)
+        XCTAssertTrue(row.exists)
         row.tap()
         app.buttons["More"].firstMatch.tap()
         app.buttons["Download for Offline"].tap()
@@ -163,8 +175,8 @@ final class HCGNewsUITests: XCTestCase {
 
     func testRestrictedArticleExplainsSignIn() {
         let app = launch()
-        let restricted = element(containing: "Fixture headline 7", in: app)
-        XCTAssertTrue(restricted.waitForExistence(timeout: 10))
+        let restricted = scrolledTo("Fixture headline 7", in: app)
+        XCTAssertTrue(restricted.exists)
         restricted.tap()
         XCTAssertTrue(app.staticTexts["Sign-in required"].waitForExistence(timeout: 5))
     }
@@ -221,8 +233,8 @@ final class HCGNewsUITests: XCTestCase {
 
     func testLargestAccessibilityTextSizeStillReadable() {
         let app = launch(arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
-        let lead = element(containing: "Fixture long headline", in: app)
-        XCTAssertTrue(lead.waitForExistence(timeout: 10))
+        let lead = scrolledTo("Fixture long headline", in: app)
+        XCTAssertTrue(lead.exists)
         lead.tap()
         XCTAssertTrue(element(containing: "Fixture disclosure.", in: app).waitForExistence(timeout: 5))
     }

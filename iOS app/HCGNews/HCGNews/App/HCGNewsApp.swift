@@ -26,7 +26,7 @@ struct HCGNewsApp: App {
                 }
             }
             .environment(router)
-            .hcgThemed()
+            .hcgThemedApp()
         }
         .commands { NewsCommands(router: router) }
     }

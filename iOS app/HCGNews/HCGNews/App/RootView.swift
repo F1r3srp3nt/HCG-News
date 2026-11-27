@@ -87,6 +87,7 @@ struct CompactRootView: View {
                             }
                         }
                 }
+                .editionRefreshing()
                 .tabItem { Label(destination.title, systemImage: destination.systemImage) }
                 .tag(destination)
                 .badge(destination == .saved ? env.saved.interruptedIDs.count : 0)
@@ -154,6 +155,7 @@ struct RegularRootView: View {
             }
             .id(router.sidebar)
         }
+        .editionRefreshing()
         .navigationSplitViewStyle(.balanced)
     }
 
