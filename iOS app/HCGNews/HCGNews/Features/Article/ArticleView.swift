@@ -35,7 +35,10 @@ struct ArticleView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                // Eager on purpose: a LazyVStack under the two-way scrollPosition(id:) binding kept
+                // re-estimating row heights while scrolling and never settled on iPhone (main thread
+                // busy for over 30 s). An article is a bounded list of blocks, so laying it out once is cheap.
+                VStack(alignment: .leading, spacing: 0) {
                     content(proxy: proxy)
                 }
                 .scrollTargetLayout()
@@ -132,7 +135,7 @@ struct ArticleView: View {
                 SourcesList(sources: article.sources).padding(.top, 28).id(100_000)
             }
         }
-        .dynamicTypeSize(ReadingSize.adjusted(systemTypeSize, step: readingStep))
+        .modifier(ReadingSizeStep(base: systemTypeSize, step: readingStep))
 
         if !article.related.isEmpty {
             RelatedStories(items: article.related).padding(.top, 32).id(100_001)
@@ -227,6 +230,39 @@ struct ArticleView: View {
 
 // MARK: - Pieces
 
+/// The reader's text-size step on top of the system Dynamic Type size (none at step 0).
+private struct ReadingSizeStep: ViewModifier {
+    let base: DynamicTypeSize
+    let step: Int
+    func body(content: Content) -> some View {
+        if step == 0 { content } else { content.dynamicTypeSize(ReadingSize.adjusted(base, step: step)) }
+    }
+}
+
+/// A text link with a full 44-point touch target.
+struct InlineLink: View {
+    let title: String
+    let destination: URL
+    var font: Font = .footnote
+
+    init(_ title: String, destination: URL, font: Font = .footnote) {
+        self.title = title
+        self.destination = destination
+        self.font = font
+    }
+
+    var body: some View {
+        Link(destination: destination) {
+            Text(title)
+                .font(font)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+    }
+}
+
 /// Says plainly when the reader is looking at a stored copy rather than the live article.
 struct SourceBanner: View {
     let source: ArticleOrigin
@@ -292,12 +328,14 @@ struct ArticleHeader: View {
                 }
                 if let published = summary.publishedAt {
                     Text("Published \(NewsDate.article(published))").font(Typography.meta).foregroundStyle(Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel("Published \(NewsDate.full(published))")
                 } else {
                     Text("Not published").font(Typography.meta).foregroundStyle(Palette.warning)
                 }
                 if let updated = summary.updatedAt, let published = summary.publishedAt, updated.timeIntervalSince(published) > 60 {
                     Text("Updated \(NewsDate.full(updated))").font(Typography.meta).foregroundStyle(Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -316,10 +354,9 @@ struct SponsorNoticeView: View {
             }
             if let text = sponsor?.text { Text(text).font(.footnote).foregroundStyle(Palette.secondaryText) }
             if let url = sponsor?.url, LinkPolicy.allowedExternalURL(url) != nil {
-                Link("About this sponsor", destination: url).font(.footnote)
+                InlineLink("About this sponsor", destination: url)
             }
-            Link("Advertising disclosure", destination: URL(string: "https://news.hakmicapitalgroup.com/advertising-disclosure")!)
-                .font(.footnote)
+            InlineLink("Advertising disclosure", destination: URL(string: "https://news.hakmicapitalgroup.com/advertising-disclosure")!)
         }
         .cardSurface(cornerRadius: 10)
         .accessibilityElement(children: .combine)
@@ -341,7 +378,7 @@ struct CorrectionsView: View {
                     Text(correction.text).font(.footnote).foregroundStyle(Palette.primaryText).textSelection(.enabled)
                 }
             }
-            Link("Corrections policy", destination: URL(string: "https://news.hakmicapitalgroup.com/corrections")!).font(.footnote)
+            InlineLink("Corrections policy", destination: URL(string: "https://news.hakmicapitalgroup.com/corrections")!)
         }
         .cardSurface(cornerRadius: 10)
         .accessibilityElement(children: .combine)

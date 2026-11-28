@@ -236,7 +236,9 @@ final class HCGNewsUITests: XCTestCase {
         let lead = scrolledTo("Fixture long headline", in: app)
         XCTAssertTrue(lead.exists)
         lead.tap()
-        XCTAssertTrue(element(containing: "Fixture disclosure.", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Share"].waitForExistence(timeout: 5), "article opens at the largest size")
+        // At AX-XXXL the disclosure is several screens down; it must be reachable by scrolling.
+        XCTAssertTrue(scrolledTo("Fixture disclosure.", in: app).exists)
     }
 
     func testAccountExplainsUnavailableSignInAndTechnicalSettingsAreUnderAdvanced() {
@@ -245,7 +247,13 @@ final class HCGNewsUITests: XCTestCase {
         openSettings(app)
         XCTAssertTrue(element(containing: "Sign-in isn't set up", in: app).waitForExistence(timeout: 5))
         XCTAssertFalse(element(containing: "Content API", in: app).exists, "technical details live under Advanced")
-        app.buttons["Advanced"].firstMatch.tap()
+        let advanced = app.buttons["settings-advanced"].firstMatch
+        var swipes = 0
+        while !(advanced.exists && advanced.isHittable) && swipes < 5 {
+            app.swipeUp()
+            swipes += 1
+        }
+        advanced.tap()
         XCTAssertTrue(element(containing: "On this device", in: app).waitForExistence(timeout: 5))
     }
 }

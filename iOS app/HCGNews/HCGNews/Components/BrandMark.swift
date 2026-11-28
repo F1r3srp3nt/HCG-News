@@ -23,6 +23,8 @@ struct HCGMark: View {
 /// "HCG | News": logo, separator, italic serif wordmark.
 struct NewsWordmark: View {
     var logoHeight: CGFloat = 28
+    /// What VoiceOver reads for the logo and wordmark.
+    var accessibilityName = "HCG News"
     @ScaledMetric(relativeTo: .title) private var scale: CGFloat = 1
 
     var body: some View {
@@ -38,7 +40,7 @@ struct NewsWordmark: View {
                 .fixedSize()
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("HCG News")
+        .accessibilityLabel(accessibilityName)
     }
 
     /// Italic Newsreader at the logo's scale (the system italic serif if it can't load).
@@ -63,11 +65,15 @@ struct Masthead: View {
             Rectangle().fill(Palette.separator).frame(height: 1).accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                NewsWordmark(logoHeight: sizeClass == .regular ? 40 : 32)
+                // The masthead's heading; it names the edition, which Classic doesn't show as text.
+                NewsWordmark(logoHeight: sizeClass == .regular ? 40 : 32,
+                             accessibilityName: "HCG News, \(edition.editionName)")
+                    .accessibilityAddTraits(.isHeader)
                 Text("A HAKMI CAPITAL GROUP PUBLICATION")
                     .font(Typography.sans(.caption2, weight: .medium))
                     .tracking(0.6)
                     .foregroundStyle(Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.top, 16)
 
@@ -77,9 +83,6 @@ struct Masthead: View {
         .padding(.horizontal, sizeClass == .regular ? 32 : 16)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("HCG News, \(edition.editionName). \(NewsDate.day(Date())). The future of information.")
-        .accessibilityAddTraits(.isHeader)
     }
 
     private var dateLine: some View {
@@ -118,10 +121,10 @@ struct Masthead: View {
             }
             Text("The future of information.")
                 .font(Typography.serifItalic(.title3))
-                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.88) : Palette.silver)
+                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.94) : Palette.silver)
             Text("Technology, business, markets and the ideas shaping tomorrow.")
                 .font(Typography.sans(.footnote))
-                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.72) : Palette.secondaryText)
+                .foregroundStyle(edition == .future && colorScheme == .dark ? Color.white.opacity(0.86) : Palette.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,6 +158,9 @@ struct FutureBackdrop: View {
             Image("FutureCommandCenter")
                 .resizable()
                 .aspectRatio(contentMode: .fill)
+                // An even scrim first, so the hero text keeps at least 4.5:1 over the brightest
+                // part of the artwork; then the website's left-to-right and bottom shading.
+                .overlay(Color.black.opacity(0.5))
                 .overlay(
                     LinearGradient(colors: [Color.black.opacity(0.92), Color.black.opacity(0.62), Color.black.opacity(0.25)],
                                    startPoint: .leading, endPoint: .trailing))

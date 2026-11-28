@@ -34,7 +34,7 @@ struct ContentBlockView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(marker(ordered: ordered, index: index, items: items))
                             .font(Typography.body(typeface).monospacedDigit())
-                            .foregroundStyle(Palette.silver)
+                            .foregroundStyle(Palette.secondaryText)
                             .accessibilityHidden(true)
                         Text(item.text.attributed)
                             .font(Typography.body(typeface))
@@ -89,7 +89,7 @@ struct ContentBlockView: View {
             Label(title, systemImage: icon).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.primaryText)
             Text(text).font(.footnote).foregroundStyle(Palette.secondaryText).fixedSize(horizontal: false, vertical: true)
             if let canonicalURL {
-                Link("View the full article on the web", destination: canonicalURL).font(.footnote.weight(.semibold))
+                InlineLink("View the full article on the web", destination: canonicalURL, font: .footnote.weight(.semibold))
             }
         }
         .cardSurface(cornerRadius: 10)

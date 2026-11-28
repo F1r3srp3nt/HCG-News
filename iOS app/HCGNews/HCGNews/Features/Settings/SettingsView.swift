@@ -61,6 +61,7 @@ struct SettingsView: View {
                         ConnectionBadge(status: env.connection.publication)
                     }
                 }
+                .accessibilityIdentifier("settings-advanced")
                 NavigationLink("About HCG News", value: SettingsRoute.about)
             }
         }

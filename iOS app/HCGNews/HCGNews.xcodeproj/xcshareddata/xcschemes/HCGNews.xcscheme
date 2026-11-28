@@ -79,6 +79,16 @@
                ReferencedContainer = "container:HCGNewsKit">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "HCGPlatformTests"
+               BuildableName = "HCGPlatformTests"
+               BlueprintName = "HCGPlatformTests"
+               ReferencedContainer = "container:HCGNewsKit">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
